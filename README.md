@@ -3,9 +3,10 @@
 ## Features:
 
 ### Folder manipulation:
-- load folders and files (multithreaded)
-- load files without loading folders
-- load folders without loading files
+- ~~load folders and files~~ (multithreaded)
+- ~~load files without loading folders~~
+- ~~load folders without loading files~~
+    - technically loads everything and filters
 - add single folder without loading files
 - clear selection of folders
 
@@ -16,7 +17,7 @@
 - Skip image
 
 ### Information displayed
-- Current directory
+- ~~Current directory~~
 - Files remaining (if possible without it being slow)
 
 ### Flow control
