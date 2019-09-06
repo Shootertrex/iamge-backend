@@ -1,8 +1,8 @@
-use std::path::{Path};
+use std::path::{Path, PathBuf};
 use std::fs;
 
-pub fn load_filesystem_elements(directory: &Path, is_file: bool) -> Option<Vec<String>> {
-    let mut files: Vec<String> = Vec::new();
+pub fn load_filesystem_elements(directory: &Path, is_file: bool) -> Option<Vec<PathBuf>> {
+    let mut files: Vec<PathBuf> = Vec::new();
 
     let paths = match fs::read_dir(directory){
         Ok(valid_paths) => valid_paths,
@@ -19,10 +19,7 @@ pub fn load_filesystem_elements(directory: &Path, is_file: bool) -> Option<Vec<S
             continue;
         }
 
-        files.push(path
-            .into_os_string()
-            .to_string_lossy()
-            .to_string());
+        files.push(path);
     }
 
     Some(files)
@@ -31,11 +28,11 @@ pub fn load_filesystem_elements(directory: &Path, is_file: bool) -> Option<Vec<S
 #[cfg(test)]
 mod tests {
     use crate::filesystem::load_filesystem_elements;
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
 
     #[test]
     fn ensure_files_are_loaded() {
-        let expected_files = vec!["./images/file1.jpg", "./images/file2.jpg"];
+        let expected_files = vec![PathBuf::from(r"./images/file1.jpg"), PathBuf::from(r"./images/file2.jpg")];
 
         let actual_files = load_filesystem_elements(Path::new("./images"), true).expect("Found empty list!");
 
@@ -44,17 +41,17 @@ mod tests {
 
     #[test]
     fn ensure_folders_are_loaded() {
-        let expected_folders = vec!["./images/testFolder", "./images/testFolder2"];
+        let expected_folders = vec![PathBuf::from(r"./images/testFolder"), PathBuf::from(r"./images/testFolder2")];
 
         let actual_folders = load_filesystem_elements(Path::new("./images"), false).expect("Found empty list!");
 
         assert_filesystem_elements(&actual_folders, &expected_folders);
     }
 
-    fn assert_filesystem_elements(actual_elements: &Vec<String>, expected_elements: &Vec<&str>) {
+    fn assert_filesystem_elements(actual_elements: &Vec<PathBuf>, expected_elements: &Vec<PathBuf>) {
         assert_eq!(actual_elements.len(), expected_elements.len());
         for expected in expected_elements {
-            assert!(actual_elements.contains(&expected.to_string()));
+            assert!(actual_elements.contains(expected));
         }
     }
 }

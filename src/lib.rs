@@ -1,18 +1,18 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 mod filesystem;
 
 pub struct Backend {
-    files: Vec<String>,
-    folders: Vec<String>,
+    files: Vec<PathBuf>,
+    folders: Vec<PathBuf>,
     pwd: String,
 }
 
 impl Backend {
-    pub fn files(&self) -> &Vec<String> {
+    pub fn files(&self) -> &Vec<PathBuf> {
         &self.files
     }
 
-    pub fn folders(&self) -> &Vec<String> {
+    pub fn folders(&self) -> &Vec<PathBuf> {
         &self.folders
     }
 
@@ -46,14 +46,14 @@ impl Backend {
     }
 
     pub fn add_folder(&mut self, directory: String) {
-        let new_folder = Path::new(&directory);
+        let new_folder = PathBuf::from(&directory);
 
         if !new_folder.exists() {
             // some error code
             return;
         }
 
-        self.folders.push(directory);
+        self.folders.push(new_folder);
     }
     
     pub fn clear_folders(&mut self) {
