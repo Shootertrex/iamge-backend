@@ -55,6 +55,10 @@ impl Backend {
 
         self.folders.push(directory);
     }
+    
+    pub fn clear_folders(&mut self) {
+        self.folders = Vec::new();
+    }
 
 }
 

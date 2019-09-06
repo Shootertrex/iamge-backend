@@ -8,7 +8,7 @@
 - ~~load folders without loading files~~
     - technically loads everything and filters
 - ~~add single folder without loading files~~
-- clear selection of folders
+- ~~clear selection of folders~~
 
 ### Image manipulation:
 - Provide current image
