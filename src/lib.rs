@@ -26,13 +26,13 @@ impl Backend {
 
     pub fn load_folders_and_files(&mut self, directory: String) {
         self.files = match filesystem::load_filesystem_elements(Path::new(&directory), true) {
-            Some(valid_files) => valid_files,
-            None => /* exit for now */return,
+            Ok(valid_files) => valid_files,
+            Err(_) => /* exit for now */return,
         };
 
         self.folders = match filesystem::load_filesystem_elements(Path::new(&directory), true) {
-            Some(valid_files) => valid_files,
-            None => /* exit for now */return,
+            Ok(valid_files) => valid_files,
+            Err(_) => /* exit for now */return,
         };
 
         self.pwd = directory;
@@ -40,8 +40,8 @@ impl Backend {
 
     pub fn load_external_folders(&mut self, directory: String) {
         self.folders = match filesystem::load_filesystem_elements(Path::new(&directory), true) {
-            Some(valid_files) => valid_files,
-            None => /* exit for now */return,
+            Ok(valid_files) => valid_files,
+            Err(_) => /* exit for now */return,
         };
     }
 

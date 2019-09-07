@@ -1,19 +1,14 @@
 use std::path::{Path, PathBuf};
 use std::fs;
+use std::io::Error;
 
-pub fn load_filesystem_elements(directory: &Path, is_file: bool) -> Option<Vec<PathBuf>> {
+pub fn load_filesystem_elements(directory: &Path, is_file: bool) -> Result<Vec<PathBuf>, Error> {
     let mut files: Vec<PathBuf> = Vec::new();
-
-    let paths = match fs::read_dir(directory){
-        Ok(valid_paths) => valid_paths,
-        Err(_) => return None,
-    };
+    let paths = fs::read_dir(directory)?;
 
     for maybe_dir_entry in paths {
-        let path = match maybe_dir_entry {
-            Ok(valid_dir) => valid_dir.path(),
-            Err(_) => continue,
-        };
+
+        let path = (maybe_dir_entry)?.path();
 
         if path.is_dir() == is_file {
             continue;
@@ -22,13 +17,14 @@ pub fn load_filesystem_elements(directory: &Path, is_file: bool) -> Option<Vec<P
         files.push(path);
     }
 
-    Some(files)
+    Ok(files)
 }
 
 #[cfg(test)]
 mod tests {
     use crate::filesystem::load_filesystem_elements;
     use std::path::{Path, PathBuf};
+    use std::io::ErrorKind;
 
     #[test]
     fn ensure_files_are_loaded() {
@@ -46,6 +42,17 @@ mod tests {
         let actual_folders = load_filesystem_elements(Path::new("./images"), false).expect("Found empty list!");
 
         assert_filesystem_elements(&actual_folders, &expected_folders);
+    }
+
+    #[test]
+    fn ensure_invalid_folders_are_caught() {
+        let expected_error = ErrorKind::NotFound;
+
+        let actual_error = load_filesystem_elements(Path::new("./invalid_directory"), false)
+            .err()
+            .unwrap();
+
+        assert_eq!(actual_error.kind(), expected_error);
     }
 
     fn assert_filesystem_elements(actual_elements: &Vec<PathBuf>, expected_elements: &Vec<PathBuf>) {
