@@ -27,12 +27,20 @@ impl Backend {
     pub fn load_folders_and_files(&mut self, directory: String) {
         self.files = match filesystem::load_filesystem_elements(Path::new(&directory), true) {
             Ok(valid_files) => valid_files,
-            Err(_) => /* exit for now */return,
+            Err(_) =>
+            /* exit for now */
+            {
+                return
+            }
         };
 
         self.folders = match filesystem::load_filesystem_elements(Path::new(&directory), true) {
             Ok(valid_files) => valid_files,
-            Err(_) => /* exit for now */return,
+            Err(_) =>
+            /* exit for now */
+            {
+                return
+            }
         };
 
         self.pwd = directory;
@@ -41,7 +49,11 @@ impl Backend {
     pub fn load_external_folders(&mut self, directory: String) {
         self.folders = match filesystem::load_filesystem_elements(Path::new(&directory), true) {
             Ok(valid_files) => valid_files,
-            Err(_) => /* exit for now */return,
+            Err(_) =>
+            /* exit for now */
+            {
+                return
+            }
         };
     }
 
@@ -55,11 +67,10 @@ impl Backend {
 
         self.folders.push(new_folder);
     }
-    
+
     pub fn clear_folders(&mut self) {
         self.folders = Vec::new();
     }
-
 }
 
 #[cfg(test)]
