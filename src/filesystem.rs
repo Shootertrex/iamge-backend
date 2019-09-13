@@ -19,11 +19,18 @@ pub fn load_filesystem_elements(directory: &Path, is_file: bool) -> Result<Vec<P
     Ok(files)
 }
 
+pub fn delete_file(file: &Path) -> Result<(), Error> {
+    fs::remove_file(file)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::filesystem::load_filesystem_elements;
+    use crate::filesystem::*;
     use std::io::ErrorKind;
     use std::path::{Path, PathBuf};
+    use std::fs::File;
+    use tempdir::TempDir;
 
     #[test]
     fn ensure_files_are_loaded() {
@@ -70,5 +77,27 @@ mod tests {
         for expected in expected_elements {
             assert!(actual_elements.contains(expected));
         }
+    }
+
+    #[test]
+    fn ensure_delete_file_deletes_it() {
+        let dir = TempDir::new("unit_test").unwrap();
+        let file1 = "file1.txt";
+        let file2 = "file2.txt";
+        File::create(dir.path().join(file1)).unwrap();
+        File::create(dir.path().join(file2)).unwrap();
+
+        assert!(!delete_file(&dir.path().join(file1)).is_err());
+        
+        assert!(fs::read(dir.path().join(file1)).is_err());
+        assert!(fs::read(dir.path().join(file2)).is_ok());
+    }
+
+    #[test]
+    fn ensure_error_thrown_when_no_file_to_delete() {
+        let dir = TempDir::new("unit_test").unwrap();
+        let file1 = "file1.txt";
+
+        assert!(delete_file(&dir.path().join(file1)).is_err());
     }
 }

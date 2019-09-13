@@ -1,3 +1,4 @@
+use std::io::Error;
 use std::path::{Path, PathBuf};
 mod filesystem;
 
@@ -70,6 +71,10 @@ impl Backend {
 
     pub fn clear_folders(&mut self) {
         self.folders = Vec::new();
+    }
+
+    pub fn delete_file(&mut self, file_path: String) -> Result<(), Error> {
+        filesystem::delete_file(Path::new(&file_path))
     }
 }
 
