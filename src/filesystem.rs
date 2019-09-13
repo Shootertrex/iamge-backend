@@ -27,9 +27,9 @@ pub fn delete_file(file: &Path) -> Result<(), Error> {
 #[cfg(test)]
 mod tests {
     use crate::filesystem::*;
+    use std::fs::File;
     use std::io::ErrorKind;
     use std::path::{Path, PathBuf};
-    use std::fs::File;
     use tempdir::TempDir;
 
     #[test]
@@ -88,7 +88,7 @@ mod tests {
         File::create(dir.path().join(file2)).unwrap();
 
         assert!(!delete_file(&dir.path().join(file1)).is_err());
-        
+
         assert!(fs::read(dir.path().join(file1)).is_err());
         assert!(fs::read(dir.path().join(file2)).is_ok());
     }
