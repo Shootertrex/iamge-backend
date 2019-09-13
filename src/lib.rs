@@ -1,4 +1,4 @@
-use std::io::Error;
+use std::io::{Error, ErrorKind};
 use std::path::{Path, PathBuf};
 mod filesystem;
 
@@ -25,48 +25,30 @@ impl Backend {
         self.files.len()
     }
 
-    pub fn load_folders_and_files(&mut self, directory: String) {
-        self.files = match filesystem::load_filesystem_elements(Path::new(&directory), true) {
-            Ok(valid_files) => valid_files,
-            Err(_) =>
-            /* exit for now */
-            {
-                return
-            }
-        };
-
-        self.folders = match filesystem::load_filesystem_elements(Path::new(&directory), true) {
-            Ok(valid_files) => valid_files,
-            Err(_) =>
-            /* exit for now */
-            {
-                return
-            }
-        };
-
+    pub fn load_folders_and_files(&mut self, directory: String) -> Result<(), Error> {
+        self.files = filesystem::load_filesystem_elements(Path::new(&directory), true)?;
+        self.folders = filesystem::load_filesystem_elements(Path::new(&directory), true)?;
         self.pwd = directory;
+
+        Ok(())
     }
 
-    pub fn load_external_folders(&mut self, directory: String) {
-        self.folders = match filesystem::load_filesystem_elements(Path::new(&directory), true) {
-            Ok(valid_files) => valid_files,
-            Err(_) =>
-            /* exit for now */
-            {
-                return
-            }
-        };
+    pub fn load_external_folders(&mut self, directory: String) -> Result<(), Error> {
+        self.folders = filesystem::load_filesystem_elements(Path::new(&directory), true)?;
+
+        Ok(())
     }
 
-    pub fn add_folder(&mut self, directory: String) {
+    pub fn add_folder(&mut self, directory: String) -> Result<(), Error> {
         let new_folder = PathBuf::from(&directory);
 
         if !new_folder.exists() {
-            // some error code
-            return;
+            return Err(Error::from(ErrorKind::NotFound));
         }
 
         self.folders.push(new_folder);
+
+        Ok(())
     }
 
     pub fn clear_folders(&mut self) {
