@@ -39,6 +39,12 @@ impl Backend {
         Ok(())
     }
 
+    pub fn move_file(&mut self, from_file: String, to_file: String) -> Result<(), Error> {
+        filesystem::move_file(Path::new(&from_file), Path::new(&to_file))?;
+
+        Ok(())
+    }
+
     pub fn add_folder(&mut self, directory: String) -> Result<(), Error> {
         let new_folder = PathBuf::from(&directory);
 

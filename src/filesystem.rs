@@ -24,6 +24,11 @@ pub fn delete_file(file: &Path) -> Result<(), Error> {
     Ok(())
 }
 
+pub fn move_file(from_file: &Path, to_file: &Path) -> Result<(), Error> {
+    fs::rename(from_file, to_file)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use crate::filesystem::*;
@@ -31,6 +36,7 @@ mod tests {
     use std::io::ErrorKind;
     use std::path::{Path, PathBuf};
     use tempdir::TempDir;
+    use std::fs;
 
     #[test]
     fn ensure_files_are_loaded() {
@@ -99,5 +105,36 @@ mod tests {
         let file1 = "file1.txt";
 
         assert!(delete_file(&dir.path().join(file1)).is_err());
+    }
+
+    #[test]
+    fn ensure_file_is_moved() {
+        let from_dir = TempDir::new("unit_test").unwrap();
+        let to_dir = TempDir::new("unit_test").unwrap();
+        let file1 = "file1.txt";
+        let file2 = "file2.txt";
+        File::create(from_dir.path().join(file1)).unwrap();
+        File::create(from_dir.path().join(file2)).unwrap();
+
+        assert!(!move_file(&from_dir.path().join(file1), &to_dir.path().join(file1)).is_err());
+
+        assert!(fs::read(from_dir.path().join(file1)).is_err());
+        assert!(fs::read(to_dir.path().join(file1)).is_ok());
+        assert!(fs::read(from_dir.path().join(file2)).is_ok());
+        assert!(fs::read(to_dir.path().join(file2)).is_err());
+    }
+
+    #[test]
+    fn ensure_no_file_is_moved_when_file_not_found() {
+        let from_dir = TempDir::new("unit_test").unwrap();
+        let to_dir = TempDir::new("unit_test").unwrap();
+        let file1 = "file1.txt";
+        let fake_file = "fake_file.txt";
+        File::create(from_dir.path().join(file1)).unwrap();
+
+        assert!(move_file(&from_dir.path().join(fake_file), &to_dir.path().join(fake_file)).is_err());
+
+        assert!(fs::read(from_dir.path().join(file1)).is_ok());
+        assert!(fs::read(to_dir.path().join(file1)).is_err());
     }
 }
