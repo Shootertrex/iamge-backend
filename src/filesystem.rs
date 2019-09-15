@@ -32,11 +32,11 @@ pub fn move_file(from_file: &Path, to_file: &Path) -> Result<(), Error> {
 #[cfg(test)]
 mod tests {
     use crate::filesystem::*;
+    use std::fs;
     use std::fs::File;
     use std::io::ErrorKind;
     use std::path::{Path, PathBuf};
     use tempdir::TempDir;
-    use std::fs;
 
     #[test]
     fn ensure_files_are_loaded() {
@@ -116,7 +116,11 @@ mod tests {
         File::create(from_dir.path().join(file1)).unwrap();
         File::create(from_dir.path().join(file2)).unwrap();
 
-        assert!(!move_file(&from_dir.path().join(file1), &to_dir.path().join(file1)).is_err());
+        assert!(!move_file(
+            &from_dir.path().join(file1),
+            &to_dir.path().join(file1)
+        )
+        .is_err());
 
         assert!(fs::read(from_dir.path().join(file1)).is_err());
         assert!(fs::read(to_dir.path().join(file1)).is_ok());
@@ -132,7 +136,11 @@ mod tests {
         let fake_file = "fake_file.txt";
         File::create(from_dir.path().join(file1)).unwrap();
 
-        assert!(move_file(&from_dir.path().join(fake_file), &to_dir.path().join(fake_file)).is_err());
+        assert!(move_file(
+            &from_dir.path().join(fake_file),
+            &to_dir.path().join(fake_file)
+        )
+        .is_err());
 
         assert!(fs::read(from_dir.path().join(file1)).is_ok());
         assert!(fs::read(to_dir.path().join(file1)).is_err());
