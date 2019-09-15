@@ -12,7 +12,7 @@
 
 ### Image manipulation:
 - Provide current image
-- Move image to selected folder
+- ~~Move image to selected folder~~
 - ~~Delete image~~
 - Skip image
 
