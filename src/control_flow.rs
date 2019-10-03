@@ -2,15 +2,18 @@ use crate::filesystem;
 use std::io::Error;
 use std::path::Path;
 
-//how to undo a delete in rust? not possible?
-pub struct Delete {
-    pub current_file_location: i32,
-    pub previous: i32,
-}
-
 pub struct Move {
     pub current_file_location: String,
     pub previous_file_location: String,
+}
+
+impl Move {
+    pub fn new(current_location: String, previous_location: String) -> Move {
+        Move {
+            current_file_location: current_location,
+            previous_file_location: previous_location,
+        }
+    }
 }
 
 impl Controllable for Move {
@@ -37,6 +40,12 @@ pub struct Skip {
     // does nothing
 }
 
+impl Skip {
+    pub fn new() -> Skip {
+        Skip {}
+    }
+}
+
 impl Controllable for Skip {
     fn undo(&self) -> Result<(), Error> {
         // do nothing except decrement pointer
@@ -49,7 +58,7 @@ impl Controllable for Skip {
     }
 }
 
-trait Controllable {
+pub trait Controllable {
     fn undo(&self) -> Result<(), Error>;
     fn redo(&self) -> Result<(), Error>;
 }
