@@ -14,7 +14,7 @@
 - Provide current image
 - ~~Move image to selected folder~~
 - ~~Delete image~~
-- Skip image
+- ~~Skip image~~
 - maybe store to-be-deleted images in a temp folder and delete when memory is freed (when file can no longer be undone/redone)?
 
 ### Information displayed
