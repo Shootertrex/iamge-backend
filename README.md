@@ -15,10 +15,12 @@
 - ~~Move image to selected folder~~
 - ~~Delete image~~
 - Skip image
+- maybe store to-be-deleted images in a temp folder and delete when memory is freed (when file can no longer be undone/redone)?
 
 ### Information displayed
 - ~~Current directory~~
 - Files remaining (if possible without it being slow)
 
 ### Flow control
-- Undo, redo stacks
+- ~~Undo, redo stacks~~
+- how to undo a delete in rust? not possible?

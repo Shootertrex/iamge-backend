@@ -1,11 +1,15 @@
+use control_flow::Controllable;
 use std::io::{Error, ErrorKind};
 use std::path::{Path, PathBuf};
+
+mod control_flow;
 mod filesystem;
 
 pub struct Backend {
     files: Vec<PathBuf>,
     folders: Vec<PathBuf>,
     pwd: String,
+    control_flow: Vec<Box<dyn Controllable>>,
 }
 
 impl Backend {
@@ -42,6 +46,9 @@ impl Backend {
     pub fn move_file(&mut self, from_file: String, to_file: String) -> Result<(), Error> {
         filesystem::move_file(Path::new(&from_file), Path::new(&to_file))?;
 
+        self.control_flow
+            .push(Box::new(control_flow::Move::new(from_file, to_file)));
+
         Ok(())
     }
 
@@ -63,6 +70,11 @@ impl Backend {
 
     pub fn delete_file(&mut self, file_path: String) -> Result<(), Error> {
         filesystem::delete_file(Path::new(&file_path))
+    }
+
+    pub fn skip(&mut self) {
+        // move pointer forward
+        self.control_flow.push(Box::new(control_flow::Skip::new()));
     }
 }
 
