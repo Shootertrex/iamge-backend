@@ -116,11 +116,7 @@ mod tests {
         File::create(from_dir.path().join(file1)).unwrap();
         File::create(from_dir.path().join(file2)).unwrap();
 
-        assert!(!move_file(
-            &from_dir.path().join(file1),
-            &to_dir.path().join(file1)
-        )
-        .is_err());
+        assert!(!move_file(&from_dir.path().join(file1), &to_dir.path().join(file1)).is_err());
 
         assert!(fs::read(from_dir.path().join(file1)).is_err());
         assert!(fs::read(to_dir.path().join(file1)).is_ok());
