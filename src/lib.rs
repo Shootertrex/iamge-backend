@@ -1,3 +1,4 @@
+use crate::control_flow::{Move, Skip};
 use control_flow::Controllable;
 use std::io::{Error, ErrorKind};
 use std::path::{Path, PathBuf};
@@ -47,7 +48,7 @@ impl Backend {
         filesystem::move_file(Path::new(&from_file), Path::new(&to_file))?;
 
         self.control_flow
-            .push(Box::new(control_flow::Move::new(from_file, to_file)));
+            .push(Box::new(Move::new(from_file, to_file)));
 
         Ok(())
     }
@@ -74,7 +75,7 @@ impl Backend {
 
     pub fn skip(&mut self) {
         // move pointer forward
-        self.control_flow.push(Box::new(control_flow::Skip::new()));
+        self.control_flow.push(Box::new(Skip::new()));
     }
 }
 
