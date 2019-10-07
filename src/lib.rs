@@ -54,12 +54,7 @@ impl Backend {
     }
 
     pub fn add_folder(&mut self, directory: String) -> Result<(), Error> {
-        let new_folder = PathBuf::from(&directory);
-
-        if !new_folder.exists() {
-            return Err(Error::from(ErrorKind::NotFound));
-        }
-
+        let new_folder = filesystem::add_folder(&directory)?;
         self.folders.push(new_folder);
 
         Ok(())
