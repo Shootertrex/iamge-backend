@@ -1,10 +1,11 @@
-use crate::filesystem;
+use crate::filesystem::{Filesystem, FilesystemIO};
 use std::io::Error;
 use std::path::Path;
 
 pub struct Move {
     pub current_file_location: String,
     pub previous_file_location: String,
+    filesystem_helper: Filesystem,
 }
 
 impl Move {
@@ -12,13 +13,14 @@ impl Move {
         Move {
             current_file_location: current_location,
             previous_file_location: previous_location,
+            filesystem_helper: Filesystem::new(),
         }
     }
 }
 
 impl Controllable for Move {
     fn undo(&self) -> Result<(), Error> {
-        filesystem::move_file(
+        self.filesystem_helper.move_file(
             Path::new(&self.current_file_location),
             Path::new(&self.previous_file_location),
         )?;
@@ -27,7 +29,7 @@ impl Controllable for Move {
     }
 
     fn redo(&self) -> Result<(), Error> {
-        filesystem::move_file(
+        self.filesystem_helper.move_file(
             Path::new(&self.previous_file_location),
             Path::new(&self.current_file_location),
         )?;

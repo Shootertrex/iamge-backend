@@ -1,19 +1,32 @@
 use crate::control_flow::{Move, Skip};
+use crate::filesystem::{Filesystem, FilesystemIO};
 use control_flow::Controllable;
-use std::io::{Error, ErrorKind};
+use std::io::Error;
 use std::path::{Path, PathBuf};
 
 mod control_flow;
 mod filesystem;
 
+#[derive(Default)]
 pub struct Backend {
     files: Vec<PathBuf>,
     folders: Vec<PathBuf>,
     pwd: String,
     control_flow: Vec<Box<dyn Controllable>>,
+    filesystem_helper: Filesystem,
 }
 
 impl Backend {
+    pub fn new() -> Backend {
+        Backend {
+            files: Vec::new(),
+            folders: Vec::new(),
+            pwd: String::new(),
+            control_flow: Vec::new(),
+            filesystem_helper: Filesystem::new(),
+        }
+    }
+
     pub fn files(&self) -> &Vec<PathBuf> {
         &self.files
     }
@@ -31,21 +44,28 @@ impl Backend {
     }
 
     pub fn load_folders_and_files(&mut self, directory: String) -> Result<(), Error> {
-        self.files = filesystem::load_filesystem_elements(Path::new(&directory), true)?;
-        self.folders = filesystem::load_filesystem_elements(Path::new(&directory), true)?;
+        self.files = self
+            .filesystem_helper
+            .load_filesystem_elements(Path::new(&directory), true)?;
+        self.folders = self
+            .filesystem_helper
+            .load_filesystem_elements(Path::new(&directory), true)?;
         self.pwd = directory;
 
         Ok(())
     }
 
     pub fn load_external_folders(&mut self, directory: String) -> Result<(), Error> {
-        self.folders = filesystem::load_filesystem_elements(Path::new(&directory), true)?;
+        self.folders = self
+            .filesystem_helper
+            .load_filesystem_elements(Path::new(&directory), true)?;
 
         Ok(())
     }
 
     pub fn move_file(&mut self, from_file: String, to_file: String) -> Result<(), Error> {
-        filesystem::move_file(Path::new(&from_file), Path::new(&to_file))?;
+        self.filesystem_helper
+            .move_file(Path::new(&from_file), Path::new(&to_file))?;
 
         self.control_flow
             .push(Box::new(Move::new(from_file, to_file)));
@@ -54,7 +74,7 @@ impl Backend {
     }
 
     pub fn add_folder(&mut self, directory: String) -> Result<(), Error> {
-        let new_folder = filesystem::add_folder(&directory)?;
+        let new_folder = self.filesystem_helper.add_folder(&directory)?;
         self.folders.push(new_folder);
 
         Ok(())
@@ -65,7 +85,7 @@ impl Backend {
     }
 
     pub fn delete_file(&mut self, file_path: String) -> Result<(), Error> {
-        filesystem::delete_file(Path::new(&file_path))
+        self.filesystem_helper.delete_file(Path::new(&file_path))
     }
 
     pub fn skip(&mut self) {

@@ -2,46 +2,72 @@ use std::fs;
 use std::io::{Error, ErrorKind};
 use std::path::{Path, PathBuf};
 
-pub fn load_filesystem_elements(directory: &Path, is_file: bool) -> Result<Vec<PathBuf>, Error> {
-    let mut files: Vec<PathBuf> = Vec::new();
-    let paths = fs::read_dir(directory)?;
+#[derive(Default)]
+pub struct Filesystem {}
 
-    for maybe_dir_entry in paths {
-        let path = (maybe_dir_entry)?.path();
+pub trait FilesystemIO {
+    fn load_filesystem_elements(
+        &self,
+        directory: &Path,
+        is_file: bool,
+    ) -> Result<Vec<PathBuf>, Error>;
+    fn delete_file(&self, file: &Path) -> Result<(), Error>;
+    fn move_file(&self, from_file: &Path, to_file: &Path) -> Result<(), Error>;
+    fn add_folder(&self, folder: &str) -> Result<PathBuf, Error>;
+}
 
-        if path.is_dir() == is_file {
-            continue;
+impl Filesystem {
+    pub fn new() -> Filesystem {
+        Filesystem {}
+    }
+}
+
+impl FilesystemIO for Filesystem {
+    fn load_filesystem_elements(
+        &self,
+        directory: &Path,
+        is_file: bool,
+    ) -> Result<Vec<PathBuf>, Error> {
+        let mut files: Vec<PathBuf> = Vec::new();
+        let paths = fs::read_dir(directory)?;
+
+        for maybe_dir_entry in paths {
+            let path = (maybe_dir_entry)?.path();
+
+            if path.is_dir() == is_file {
+                continue;
+            }
+
+            files.push(path);
         }
 
-        files.push(path);
+        Ok(files)
     }
 
-    Ok(files)
-}
-
-pub fn delete_file(file: &Path) -> Result<(), Error> {
-    fs::remove_file(file)?;
-    Ok(())
-}
-
-pub fn move_file(from_file: &Path, to_file: &Path) -> Result<(), Error> {
-    fs::rename(from_file, to_file)?;
-    Ok(())
-}
-
-pub fn add_folder(folder: &String) -> Result<PathBuf, Error> {
-    let new_folder = PathBuf::from(&folder);
-
-    if !new_folder.exists() {
-        return Err(Error::from(ErrorKind::NotFound));
+    fn delete_file(&self, file: &Path) -> Result<(), Error> {
+        fs::remove_file(file)?;
+        Ok(())
     }
 
-    Ok((new_folder))
+    fn move_file(&self, from_file: &Path, to_file: &Path) -> Result<(), Error> {
+        fs::rename(from_file, to_file)?;
+        Ok(())
+    }
+
+    fn add_folder(&self, folder: &str) -> Result<PathBuf, Error> {
+        let new_folder = PathBuf::from(&folder);
+
+        if !new_folder.exists() {
+            return Err(Error::from(ErrorKind::NotFound));
+        }
+
+        Ok(new_folder)
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::filesystem::*;
+    use crate::filesystem::{Filesystem, FilesystemIO};
     use std::fs;
     use std::fs::File;
     use std::io::ErrorKind;
@@ -55,8 +81,9 @@ mod tests {
             PathBuf::from(r"./images/file2.jpg"),
         ];
 
-        let actual_files =
-            load_filesystem_elements(Path::new("./images"), true).expect("Found empty list!");
+        let actual_files = Filesystem::new()
+            .load_filesystem_elements(Path::new("./images"), true)
+            .expect("Found empty list!");
 
         assert_filesystem_elements(&actual_files, &expected_files);
     }
@@ -68,8 +95,9 @@ mod tests {
             PathBuf::from(r"./images/testFolder2"),
         ];
 
-        let actual_folders =
-            load_filesystem_elements(Path::new("./images"), false).expect("Found empty list!");
+        let actual_folders = Filesystem::new()
+            .load_filesystem_elements(Path::new("./images"), false)
+            .expect("Found empty list!");
 
         assert_filesystem_elements(&actual_folders, &expected_folders);
     }
@@ -78,7 +106,8 @@ mod tests {
     fn ensure_invalid_folders_are_caught() {
         let expected_error = ErrorKind::NotFound;
 
-        let actual_error = load_filesystem_elements(Path::new("./invalid_directory"), false)
+        let actual_error = Filesystem::new()
+            .load_filesystem_elements(Path::new("./invalid_directory"), false)
             .err()
             .unwrap();
 
@@ -103,7 +132,9 @@ mod tests {
         File::create(dir.path().join(file1)).unwrap();
         File::create(dir.path().join(file2)).unwrap();
 
-        assert!(!delete_file(&dir.path().join(file1)).is_err());
+        assert!(!Filesystem::new()
+            .delete_file(&dir.path().join(file1))
+            .is_err());
 
         assert!(fs::read(dir.path().join(file1)).is_err());
         assert!(fs::read(dir.path().join(file2)).is_ok());
@@ -114,7 +145,9 @@ mod tests {
         let dir = TempDir::new("unit_test").unwrap();
         let file1 = "file1.txt";
 
-        assert!(delete_file(&dir.path().join(file1)).is_err());
+        assert!(Filesystem::new()
+            .delete_file(&dir.path().join(file1))
+            .is_err());
     }
 
     #[test]
@@ -126,7 +159,9 @@ mod tests {
         File::create(from_dir.path().join(file1)).unwrap();
         File::create(from_dir.path().join(file2)).unwrap();
 
-        assert!(!move_file(&from_dir.path().join(file1), &to_dir.path().join(file1)).is_err());
+        assert!(!Filesystem::new()
+            .move_file(&from_dir.path().join(file1), &to_dir.path().join(file1))
+            .is_err());
 
         assert!(fs::read(from_dir.path().join(file1)).is_err());
         assert!(fs::read(to_dir.path().join(file1)).is_ok());
@@ -142,11 +177,12 @@ mod tests {
         let fake_file = "fake_file.txt";
         File::create(from_dir.path().join(file1)).unwrap();
 
-        assert!(move_file(
-            &from_dir.path().join(fake_file),
-            &to_dir.path().join(fake_file)
-        )
-        .is_err());
+        assert!(Filesystem::new()
+            .move_file(
+                &from_dir.path().join(fake_file),
+                &to_dir.path().join(fake_file)
+            )
+            .is_err());
 
         assert!(fs::read(from_dir.path().join(file1)).is_ok());
         assert!(fs::read(to_dir.path().join(file1)).is_err());
@@ -154,13 +190,14 @@ mod tests {
 
     #[test]
     fn ensure_single_folder_is_added_when_add_folder_is_called() {
-        let expected_folders = vec![
-            PathBuf::from(r"./images/testFolder"),
-        ];
+        let expected_folders = vec![PathBuf::from(r"./images/testFolder")];
 
         let mut actual_folders: Vec<PathBuf> = Vec::new();
-        actual_folders.push(add_folder(&"./images/testFolder".to_owned()).expect("Found empty list!"));
-
+        actual_folders.push(
+            Filesystem::new()
+                .add_folder(&"./images/testFolder".to_owned())
+                .expect("Found empty list!"),
+        );
 
         assert_filesystem_elements(&actual_folders, &expected_folders);
     }
@@ -169,7 +206,8 @@ mod tests {
     fn ensure_not_found_error_thrown_when_add_folder_is_called_with_bad_path() {
         let expected_error = ErrorKind::NotFound;
 
-        let actual_error = add_folder(&"./images/bad_folder".to_owned())
+        let actual_error = Filesystem::new()
+            .add_folder(&"./images/bad_folder".to_owned())
             .err()
             .unwrap();
 
