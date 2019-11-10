@@ -32,18 +32,6 @@ impl Backend {
         }
     }
 
-    pub fn files(&self) -> &Vec<PathBuf> {
-        &self.files
-    }
-
-    pub fn folders(&self) -> &Vec<PathBuf> {
-        &self.folders
-    }
-
-    pub fn pwd(&self) -> &String {
-        &self.pwd
-    }
-
     pub fn file_count(&self) -> usize {
         self.files.len()
     }
@@ -163,8 +151,8 @@ mod tests {
             .load_folders_and_files("./testFolder".to_owned())
             .unwrap();
 
-        let actual_folders = test_backend.folders();
-        let actual_files = test_backend.files();
+        let actual_folders = test_backend.folders;
+        let actual_files = test_backend.files;
         assert_vectors(&actual_folders, &expected_folders);
         assert_vectors(&actual_files, &expected_files);
     }
@@ -181,8 +169,8 @@ mod tests {
             .load_external_folders("./testFolder".to_owned())
             .unwrap();
 
-        let actual_folders = test_backend.folders();
-        let actual_files = test_backend.files();
+        let actual_folders = test_backend.folders;
+        let actual_files = test_backend.files;
         assert_vectors(&actual_folders, &expected_folders);
     }
 
@@ -209,7 +197,7 @@ mod tests {
 
         test_backend.add_folder("./testFolder".to_owned()).unwrap();
 
-        let actual_folders = test_backend.folders();
+        let actual_folders = test_backend.folders;
         assert_vectors(&actual_folders, &expected_folders);
     }
 
@@ -223,8 +211,8 @@ mod tests {
 
         test_backend.clear_folders();
 
-        let actual_folders = test_backend.folders();
-        let actual_files = test_backend.files();
+        let actual_folders = test_backend.folders;
+        let actual_files = test_backend.files;
         assert_vectors(&actual_folders, &Vec::new());
         assert_vectors(&actual_files, &expected_files);
     }
@@ -240,8 +228,8 @@ mod tests {
 
         test_backend.delete_file("./file1.png".to_owned());
 
-        let actual_folders = test_backend.folders();
-        let actual_files = test_backend.files();
+        let actual_folders = test_backend.folders;
+        let actual_files = test_backend.files;
         assert_vectors(&actual_folders, &expected_folders);
         assert_vectors(&actual_files, &expected_files);
     }
