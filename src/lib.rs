@@ -56,16 +56,6 @@ impl Backend {
         Ok(())
     }
 
-    pub fn move_file(&mut self, from_file: String, to_file: String) -> Result<(), Error> {
-        self.filesystem_helper
-            .move_file(Path::new(&from_file), Path::new(&to_file))?;
-
-        self.control_flow
-            .push(Box::new(Move::new(from_file, to_file)));
-
-        Ok(())
-    }
-
     pub fn add_folder(&mut self, directory: String) -> Result<(), Error> {
         let new_folder = self.filesystem_helper.add_folder(&directory)?;
         self.folders.push(new_folder);
@@ -78,7 +68,19 @@ impl Backend {
     }
 
     pub fn delete_file(&mut self, file_path: String) -> Result<(), Error> {
+        // move pointer forward
         self.filesystem_helper.delete_file(Path::new(&file_path))
+    }
+
+    pub fn move_file(&mut self, from_file: String, to_file: String) -> Result<(), Error> {
+        self.filesystem_helper
+            .move_file(Path::new(&from_file), Path::new(&to_file))?;
+
+        self.control_flow
+            .push(Box::new(Move::new(from_file, to_file)));
+        // move pointer forward
+
+        Ok(())
     }
 
     pub fn skip(&mut self) {
