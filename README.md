@@ -1,6 +1,8 @@
 # Image backend (name pending)
 
 ## Features:
+- Moving and deleting files will require manually calling the method to move forward the pointer
+    - This reduces the complexity of each method to only return 1 type of error
 
 ### Folder manipulation:
 - ~~load folders and files~~ (multithreaded)

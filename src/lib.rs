@@ -1,7 +1,6 @@
 use crate::control_flow::{Move, Skip};
 use crate::filesystem::{Filesystem, FilesystemIO};
 use control_flow::Controllable;
-use std::error;
 use std::io::Error;
 use std::path::{Path, PathBuf};
 
@@ -74,16 +73,14 @@ impl Backend {
         self.folders = Vec::new();
     }
 
-    pub fn delete_file(&mut self, file_path: String) -> Result<(), Box<dyn error::Error>> {
+    pub fn delete_file(&mut self, file_path: String) -> Result<(), Error> {
         match self.filesystem_helper.delete_file(Path::new(&file_path)) {
             Ok(_) => {
-                Self::is_end_of_files(self.current_file_index, self.file_count())?;
-                self.current_file_index += 1;
                 self.control_flow.push(Box::new(Skip::new()));
 
                 Ok(())
             }
-            Err(error) => Err(Box::new(error)),
+            Err(error) => Err(error),
         }
     }
 
@@ -93,7 +90,6 @@ impl Backend {
 
         self.control_flow
             .push(Box::new(Move::new(from_file, to_file)));
-        // move pointer forward
 
         Ok(())
     }
@@ -252,11 +248,6 @@ mod tests {
         test_backend.filesystem_helper = Box::new(FilesystemMock::new());
         test_backend.folders = expected_folders.clone();
         test_backend.files = expected_files.clone();
-        let expected_index = 1;
-        assert_eq!(
-            test_backend.get_current_file(),
-            &expected_files[expected_index - 1]
-        );
         assert_eq!(test_backend.control_flow.len(), 0);
 
         test_backend
@@ -267,11 +258,6 @@ mod tests {
         let actual_files = &test_backend.files;
         assert_vectors(&actual_folders, &expected_folders);
         assert_vectors(&actual_files, &expected_files);
-        assert_eq!(test_backend.current_file_index, expected_index);
-        assert_eq!(
-            test_backend.get_current_file(),
-            &expected_files[expected_index]
-        );
         assert_eq!(test_backend.control_flow.len(), 1);
     }
 
