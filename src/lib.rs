@@ -12,7 +12,8 @@ pub struct Backend {
     folders: Vec<PathBuf>,
     pwd: String,
     current_file_index: usize,
-    control_flow: Vec<Box<dyn Controllable>>,
+    undo_stack: Vec<Box<dyn Controllable>>,
+    redo_stack: Vec<Box<dyn Controllable>>,
     filesystem_helper: Box<dyn FilesystemIO>,
 }
 
@@ -29,7 +30,8 @@ impl Backend {
             folders: Vec::new(),
             pwd: String::new(),
             current_file_index: 0,
-            control_flow: Vec::new(),
+            undo_stack: Vec::new(),
+            redo_stack: Vec::new(),
             filesystem_helper: Box::new(Filesystem::new()),
         }
     }
@@ -76,7 +78,7 @@ impl Backend {
     pub fn delete_file(&mut self, file_path: String) -> Result<(), Error> {
         match self.filesystem_helper.delete_file(Path::new(&file_path)) {
             Ok(_) => {
-                self.control_flow.push(Box::new(Skip::new()));
+                self.undo_stack.push(Box::new(Skip::new()));
 
                 Ok(())
             }
@@ -88,7 +90,7 @@ impl Backend {
         self.filesystem_helper
             .move_file(Path::new(&from_file), Path::new(&to_file))?;
 
-        self.control_flow
+        self.undo_stack
             .push(Box::new(Move::new(from_file, to_file)));
 
         Ok(())
@@ -97,7 +99,7 @@ impl Backend {
     pub fn skip(&mut self) -> Result<(), String> {
         Self::is_end_of_files(self.current_file_index, self.file_count())?;
         self.current_file_index += 1;
-        self.control_flow.push(Box::new(Skip::new()));
+        self.undo_stack.push(Box::new(Skip::new()));
 
         Ok(())
     }
@@ -201,13 +203,13 @@ mod tests {
         let filesystem_mock = FilesystemMock::new();
         let mut test_backend = Backend::new();
         test_backend.filesystem_helper = Box::new(filesystem_mock);
-        assert_eq!(test_backend.control_flow.len(), 0);
+        assert_eq!(test_backend.undo_stack.len(), 0);
 
         test_backend
             .move_file("./fromFolder".to_owned(), "./toFolder".to_owned())
             .unwrap();
 
-        assert_eq!(test_backend.control_flow.len(), 1);
+        assert_eq!(test_backend.undo_stack.len(), 1);
     }
 
     #[test]
@@ -248,7 +250,7 @@ mod tests {
         test_backend.filesystem_helper = Box::new(FilesystemMock::new());
         test_backend.folders = expected_folders.clone();
         test_backend.files = expected_files.clone();
-        assert_eq!(test_backend.control_flow.len(), 0);
+        assert_eq!(test_backend.undo_stack.len(), 0);
 
         test_backend
             .delete_file("./file1.png".to_owned())
@@ -258,7 +260,7 @@ mod tests {
         let actual_files = &test_backend.files;
         assert_vectors(&actual_folders, &expected_folders);
         assert_vectors(&actual_files, &expected_files);
-        assert_eq!(test_backend.control_flow.len(), 1);
+        assert_eq!(test_backend.undo_stack.len(), 1);
     }
 
     #[test]
@@ -271,7 +273,7 @@ mod tests {
             test_backend.get_current_file(),
             &expected_files[expected_index - 1]
         );
-        assert_eq!(test_backend.control_flow.len(), 0);
+        assert_eq!(test_backend.undo_stack.len(), 0);
 
         test_backend.skip().expect("Skipping failed");
 
@@ -280,7 +282,7 @@ mod tests {
             test_backend.get_current_file(),
             &expected_files[expected_index]
         );
-        assert_eq!(test_backend.control_flow.len(), 1);
+        assert_eq!(test_backend.undo_stack.len(), 1);
     }
 
     #[test]
