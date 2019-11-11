@@ -265,7 +265,7 @@ mod tests {
     }
 
     #[test]
-    fn ensure_error_is_thrown_when_index_out_of_bounds() {
+    fn ensure_error_is_thrown_when_index_out_of_bounds_when_skipping() {
         let expected_files = build_files();
         let mut test_backend = Backend::new();
         test_backend.files = expected_files.clone();
