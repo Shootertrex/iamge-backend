@@ -96,7 +96,7 @@ impl Backend {
         Ok(())
     }
 
-    pub fn skip(&mut self) -> Result<(), String> {
+    pub fn increment(&mut self) -> Result<(), String> {
         Self::is_end_of_files(self.current_file_index, self.file_count())?;
         self.current_file_index += 1;
         self.undo_stack.push(Box::new(Skip::new()));
@@ -298,7 +298,7 @@ mod tests {
         );
         assert_eq!(test_backend.undo_stack.len(), 0);
 
-        test_backend.skip().expect("Skipping failed");
+        test_backend.increment().expect("Skipping failed");
 
         assert_eq!(test_backend.current_file_index, expected_index);
         assert_eq!(
@@ -320,7 +320,7 @@ mod tests {
             &expected_files[expected_index - 1]
         );
 
-        assert!(test_backend.skip().is_err());
+        assert!(test_backend.increment().is_err());
     }
 
     #[test]
