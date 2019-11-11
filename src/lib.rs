@@ -117,19 +117,30 @@ impl Backend {
                 let result = item.undo();
                 self.redo_stack.push(item);
                 result
-            },
-            None => Ok(())
+            }
+            None => Ok(()),
+        }
+    }
+
+    pub fn redo(&mut self) -> Result<(), Error> {
+        match self.redo_stack.pop() {
+            Some(item) => {
+                let result = item.redo();
+                self.undo_stack.push(item);
+                result
+            }
+            None => Ok(()),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::control_flow::Move;
     use crate::filesystem::FilesystemIO;
     use crate::Backend;
     use std::io::{Error, ErrorKind};
     use std::path::{Path, PathBuf};
-    use crate::control_flow::Move;
 
     struct FilesystemMock {
         folders: Vec<PathBuf>,
@@ -316,7 +327,7 @@ mod tests {
     fn ensure_undo_stack_is_popped_and_redo_stack_is_pushed_when_undoing() {
         let mut test_backend = Backend::new();
         let filesystem_mock = FilesystemMock::new();
-        let mut undo_element = Move::new("a".to_owned(),"b".to_owned());
+        let mut undo_element = Move::new("a".to_owned(), "b".to_owned());
         undo_element.filesystem_helper = Box::new(filesystem_mock);
         test_backend.undo_stack.push(Box::new(undo_element));
 
@@ -331,6 +342,30 @@ mod tests {
         let mut test_backend = Backend::new();
 
         test_backend.undo().expect("undo failed");
+
+        assert_eq!(test_backend.redo_stack.len(), 0);
+        assert_eq!(test_backend.undo_stack.len(), 0);
+    }
+
+    #[test]
+    fn ensure_redo_stack_is_popped_and_undo_stack_is_pushed_when_redoing() {
+        let mut test_backend = Backend::new();
+        let filesystem_mock = FilesystemMock::new();
+        let mut redo_element = Move::new("a".to_owned(), "b".to_owned());
+        redo_element.filesystem_helper = Box::new(filesystem_mock);
+        test_backend.redo_stack.push(Box::new(redo_element));
+
+        test_backend.redo().expect("redo failed");
+
+        assert_eq!(test_backend.redo_stack.len(), 0);
+        assert_eq!(test_backend.undo_stack.len(), 1);
+    }
+
+    #[test]
+    fn ensure_nothing_happens_when_redo_stack_is_empty() {
+        let mut test_backend = Backend::new();
+
+        test_backend.redo().expect("redo failed");
 
         assert_eq!(test_backend.redo_stack.len(), 0);
         assert_eq!(test_backend.undo_stack.len(), 0);
