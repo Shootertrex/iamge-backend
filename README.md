@@ -13,7 +13,7 @@
 - ~~clear selection of folders~~
 
 ### Image manipulation:
-- Provide current image
+- ~~Provide current image~~
 - ~~Move image to selected folder~~
 - ~~Delete image~~
 - ~~Skip image~~
