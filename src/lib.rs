@@ -1,9 +1,9 @@
 use crate::control_flow::{Move, Skip};
 use crate::filesystem::{Filesystem, FilesystemIO};
 use control_flow::Controllable;
+use std::error;
 use std::io::Error;
 use std::path::{Path, PathBuf};
-use std::error;
 
 mod control_flow;
 mod filesystem;
@@ -77,12 +77,12 @@ impl Backend {
     pub fn delete_file(&mut self, file_path: String) -> Result<(), Box<dyn error::Error>> {
         match self.filesystem_helper.delete_file(Path::new(&file_path)) {
             Ok(_) => {
-                Self::is_end_of_files(&self.current_file_index, &self.file_count())?;
+                Self::is_end_of_files(self.current_file_index, self.file_count())?;
                 self.current_file_index += 1;
                 self.control_flow.push(Box::new(Skip::new()));
 
                 Ok(())
-            },
+            }
             Err(error) => Err(Box::new(error)),
         }
     }
@@ -99,18 +99,18 @@ impl Backend {
     }
 
     pub fn skip(&mut self) -> Result<(), String> {
-        Self::is_end_of_files(&self.current_file_index, &self.file_count())?;
+        Self::is_end_of_files(self.current_file_index, self.file_count())?;
         self.current_file_index += 1;
         self.control_flow.push(Box::new(Skip::new()));
 
         Ok(())
     }
 
-    fn is_end_of_files(file_index: &usize, file_count: &usize) -> Result<(), String> {
-        if file_index + 1 >= *file_count {
+    fn is_end_of_files(file_index: usize, file_count: usize) -> Result<(), String> {
+        if file_index + 1 >= file_count {
             return Err("Reached end of files!".to_owned());
         }
-         Ok(())
+        Ok(())
     }
 }
 
@@ -138,7 +138,7 @@ mod tests {
     impl FilesystemIO for FilesystemMock {
         fn load_filesystem_elements(
             &self,
-            directory: &Path,
+            _directory: &Path,
             is_file: bool,
         ) -> Result<Vec<PathBuf>, Error> {
             if is_file {
@@ -149,13 +149,13 @@ mod tests {
                 Err(Error::from(ErrorKind::NotFound))
             }
         }
-        fn delete_file(&self, file: &Path) -> Result<(), Error> {
+        fn delete_file(&self, _file: &Path) -> Result<(), Error> {
             Ok(())
         }
-        fn move_file(&self, from_file: &Path, to_file: &Path) -> Result<(), Error> {
+        fn move_file(&self, _from_file: &Path, _to_file: &Path) -> Result<(), Error> {
             Ok(())
         }
-        fn add_folder(&self, folder: &str) -> Result<PathBuf, Error> {
+        fn add_folder(&self, _folder: &str) -> Result<PathBuf, Error> {
             if self.folders.len() == 1 {
                 Ok(self.folders[0].clone())
             } else {
@@ -197,21 +197,21 @@ mod tests {
             .unwrap();
 
         let actual_folders = test_backend.folders;
-        let actual_files = test_backend.files;
         assert_vectors(&actual_folders, &expected_folders);
     }
 
     #[test]
     fn ensure_file_is_moved_when_move_file_is_called() {
+        let filesystem_mock = FilesystemMock::new();
         let mut test_backend = Backend::new();
-        let mut filesystem_mock = FilesystemMock::new();
         test_backend.filesystem_helper = Box::new(filesystem_mock);
+        assert_eq!(test_backend.control_flow.len(), 0);
 
         test_backend
             .move_file("./fromFolder".to_owned(), "./toFolder".to_owned())
             .unwrap();
 
-        //fill in later
+        assert_eq!(test_backend.control_flow.len(), 1);
     }
 
     #[test]
@@ -253,17 +253,25 @@ mod tests {
         test_backend.folders = expected_folders.clone();
         test_backend.files = expected_files.clone();
         let expected_index = 1;
-        assert_eq!(test_backend.get_current_file(), &expected_files[expected_index - 1]);
+        assert_eq!(
+            test_backend.get_current_file(),
+            &expected_files[expected_index - 1]
+        );
         assert_eq!(test_backend.control_flow.len(), 0);
 
-        test_backend.delete_file("./file1.png".to_owned()).expect("delete failed!");
+        test_backend
+            .delete_file("./file1.png".to_owned())
+            .expect("delete failed!");
 
         let actual_folders = &test_backend.folders;
         let actual_files = &test_backend.files;
         assert_vectors(&actual_folders, &expected_folders);
         assert_vectors(&actual_files, &expected_files);
         assert_eq!(test_backend.current_file_index, expected_index);
-        assert_eq!(test_backend.get_current_file(), &expected_files[expected_index]);
+        assert_eq!(
+            test_backend.get_current_file(),
+            &expected_files[expected_index]
+        );
         assert_eq!(test_backend.control_flow.len(), 1);
     }
 
@@ -273,13 +281,19 @@ mod tests {
         let mut test_backend = Backend::new();
         test_backend.files = expected_files.clone();
         let expected_index = 1;
-        assert_eq!(test_backend.get_current_file(), &expected_files[expected_index - 1]);
+        assert_eq!(
+            test_backend.get_current_file(),
+            &expected_files[expected_index - 1]
+        );
         assert_eq!(test_backend.control_flow.len(), 0);
 
         test_backend.skip().expect("Skipping failed");
 
         assert_eq!(test_backend.current_file_index, expected_index);
-        assert_eq!(test_backend.get_current_file(), &expected_files[expected_index]);
+        assert_eq!(
+            test_backend.get_current_file(),
+            &expected_files[expected_index]
+        );
         assert_eq!(test_backend.control_flow.len(), 1);
     }
 
@@ -290,7 +304,10 @@ mod tests {
         test_backend.files = expected_files.clone();
         test_backend.current_file_index = 2;
         let expected_index = 3;
-        assert_eq!(test_backend.get_current_file(), &expected_files[expected_index - 1]);
+        assert_eq!(
+            test_backend.get_current_file(),
+            &expected_files[expected_index - 1]
+        );
 
         assert!(test_backend.skip().is_err());
     }
