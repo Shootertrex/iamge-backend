@@ -5,7 +5,7 @@ use std::path::Path;
 pub struct Move {
     pub current_file_location: String,
     pub previous_file_location: String,
-    filesystem_helper: Filesystem,
+    pub filesystem_helper: Box<dyn FilesystemIO>,
 }
 
 impl Move {
@@ -13,7 +13,7 @@ impl Move {
         Move {
             current_file_location: current_location,
             previous_file_location: previous_location,
-            filesystem_helper: Filesystem::new(),
+            filesystem_helper: Box::new(Filesystem::new()),
         }
     }
 }

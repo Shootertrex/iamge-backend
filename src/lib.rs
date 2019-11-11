@@ -110,6 +110,17 @@ impl Backend {
         }
         Ok(())
     }
+
+    pub fn undo(&mut self) -> Result<(), Error> {
+        match self.undo_stack.pop() {
+            Some(item) => {
+                let result = item.undo();
+                self.redo_stack.push(item);
+                result
+            },
+            None => Ok(())
+        }
+    }
 }
 
 #[cfg(test)]
@@ -118,6 +129,7 @@ mod tests {
     use crate::Backend;
     use std::io::{Error, ErrorKind};
     use std::path::{Path, PathBuf};
+    use crate::control_flow::Move;
 
     struct FilesystemMock {
         folders: Vec<PathBuf>,
@@ -298,6 +310,30 @@ mod tests {
         );
 
         assert!(test_backend.skip().is_err());
+    }
+
+    #[test]
+    fn ensure_undo_stack_is_popped_and_redo_stack_is_pushed_when_undoing() {
+        let mut test_backend = Backend::new();
+        let filesystem_mock = FilesystemMock::new();
+        let mut undo_element = Move::new("a".to_owned(),"b".to_owned());
+        undo_element.filesystem_helper = Box::new(filesystem_mock);
+        test_backend.undo_stack.push(Box::new(undo_element));
+
+        test_backend.undo().expect("undo failed");
+
+        assert_eq!(test_backend.redo_stack.len(), 1);
+        assert_eq!(test_backend.undo_stack.len(), 0);
+    }
+
+    #[test]
+    fn ensure_nothing_happens_when_undo_stack_is_empty() {
+        let mut test_backend = Backend::new();
+
+        test_backend.undo().expect("undo failed");
+
+        assert_eq!(test_backend.redo_stack.len(), 0);
+        assert_eq!(test_backend.undo_stack.len(), 0);
     }
 
     fn assert_vectors(actual_vector: &Vec<PathBuf>, expected_vector: &Vec<PathBuf>) {
