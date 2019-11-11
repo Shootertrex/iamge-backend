@@ -24,6 +24,6 @@
 ### Flow control
 - ~~Undo, redo stacks~~
 - push control flow when moving
-- push control flow when deleting
+- ~~push control flow when deleting~~
 - perform undo
 - how to undo a delete in rust? not possible?

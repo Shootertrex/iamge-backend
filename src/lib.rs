@@ -3,6 +3,7 @@ use crate::filesystem::{Filesystem, FilesystemIO};
 use control_flow::Controllable;
 use std::io::Error;
 use std::path::{Path, PathBuf};
+use std::error;
 
 mod control_flow;
 mod filesystem;
@@ -73,9 +74,17 @@ impl Backend {
         self.folders = Vec::new();
     }
 
-    pub fn delete_file(&mut self, file_path: String) -> Result<(), Error> {
-        // move pointer forward
-        self.filesystem_helper.delete_file(Path::new(&file_path))
+    pub fn delete_file(&mut self, file_path: String) -> Result<(), Box<dyn error::Error>> {
+        match self.filesystem_helper.delete_file(Path::new(&file_path)) {
+            Ok(_) => {
+                Self::is_end_of_files(&self.current_file_index, &self.file_count())?;
+                self.current_file_index += 1;
+                self.control_flow.push(Box::new(Skip::new()));
+
+                Ok(())
+            },
+            Err(error) => Err(Box::new(error)),
+        }
     }
 
     pub fn move_file(&mut self, from_file: String, to_file: String) -> Result<(), Error> {
@@ -90,13 +99,18 @@ impl Backend {
     }
 
     pub fn skip(&mut self) -> Result<(), String> {
-        if self.current_file_index + 1 >= self.file_count() {
-            return Err("ouch".to_owned());
-        }
+        Self::is_end_of_files(&self.current_file_index, &self.file_count())?;
         self.current_file_index += 1;
         self.control_flow.push(Box::new(Skip::new()));
 
         Ok(())
+    }
+
+    fn is_end_of_files(file_index: &usize, file_count: &usize) -> Result<(), String> {
+        if file_index + 1 >= *file_count {
+            return Err("Reached end of files!".to_owned());
+        }
+         Ok(())
     }
 }
 
@@ -238,13 +252,19 @@ mod tests {
         test_backend.filesystem_helper = Box::new(FilesystemMock::new());
         test_backend.folders = expected_folders.clone();
         test_backend.files = expected_files.clone();
+        let expected_index = 1;
+        assert_eq!(test_backend.get_current_file(), &expected_files[expected_index - 1]);
+        assert_eq!(test_backend.control_flow.len(), 0);
 
-        test_backend.delete_file("./file1.png".to_owned());
+        test_backend.delete_file("./file1.png".to_owned()).expect("delete failed!");
 
-        let actual_folders = test_backend.folders;
-        let actual_files = test_backend.files;
+        let actual_folders = &test_backend.folders;
+        let actual_files = &test_backend.files;
         assert_vectors(&actual_folders, &expected_folders);
         assert_vectors(&actual_files, &expected_files);
+        assert_eq!(test_backend.current_file_index, expected_index);
+        assert_eq!(test_backend.get_current_file(), &expected_files[expected_index]);
+        assert_eq!(test_backend.control_flow.len(), 1);
     }
 
     #[test]
@@ -258,8 +278,7 @@ mod tests {
 
         test_backend.skip().expect("Skipping failed");
 
-        let actual_index = test_backend.current_file_index;
-        assert_eq!(actual_index, expected_index);
+        assert_eq!(test_backend.current_file_index, expected_index);
         assert_eq!(test_backend.get_current_file(), &expected_files[expected_index]);
         assert_eq!(test_backend.control_flow.len(), 1);
     }
