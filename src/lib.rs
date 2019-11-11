@@ -11,6 +11,7 @@ pub struct Backend {
     files: Vec<PathBuf>,
     folders: Vec<PathBuf>,
     pwd: String,
+    current_file_index: usize,
     control_flow: Vec<Box<dyn Controllable>>,
     filesystem_helper: Box<dyn FilesystemIO>,
 }
@@ -27,6 +28,7 @@ impl Backend {
             files: Vec::new(),
             folders: Vec::new(),
             pwd: String::new(),
+            current_file_index: 0,
             control_flow: Vec::new(),
             filesystem_helper: Box::new(Filesystem::new()),
         }
@@ -34,6 +36,10 @@ impl Backend {
 
     pub fn file_count(&self) -> usize {
         self.files.len()
+    }
+
+    pub fn get_current_file(&self) -> &PathBuf {
+        &self.files[self.current_file_index]
     }
 
     pub fn load_folders_and_files(&mut self, directory: String) -> Result<(), Error> {
@@ -83,9 +89,14 @@ impl Backend {
         Ok(())
     }
 
-    pub fn skip(&mut self) {
-        // move pointer forward
+    pub fn skip(&mut self) -> Result<(), String> {
+        if self.current_file_index + 1 >= self.file_count() {
+            return Err("ouch".to_owned());
+        }
+        self.current_file_index += 1;
         self.control_flow.push(Box::new(Skip::new()));
+
+        Ok(())
     }
 }
 
@@ -234,6 +245,35 @@ mod tests {
         let actual_files = test_backend.files;
         assert_vectors(&actual_folders, &expected_folders);
         assert_vectors(&actual_files, &expected_files);
+    }
+
+    #[test]
+    fn ensure_pointer_is_moved_forward_when_file_is_skipped() {
+        let expected_files = build_files();
+        let mut test_backend = Backend::new();
+        test_backend.files = expected_files.clone();
+        let expected_index = 1;
+        assert_eq!(test_backend.get_current_file(), &expected_files[expected_index - 1]);
+        assert_eq!(test_backend.control_flow.len(), 0);
+
+        test_backend.skip().expect("Skipping failed");
+
+        let actual_index = test_backend.current_file_index;
+        assert_eq!(actual_index, expected_index);
+        assert_eq!(test_backend.get_current_file(), &expected_files[expected_index]);
+        assert_eq!(test_backend.control_flow.len(), 1);
+    }
+
+    #[test]
+    fn ensure_error_is_thrown_when_index_out_of_bounds() {
+        let expected_files = build_files();
+        let mut test_backend = Backend::new();
+        test_backend.files = expected_files.clone();
+        test_backend.current_file_index = 2;
+        let expected_index = 3;
+        assert_eq!(test_backend.get_current_file(), &expected_files[expected_index - 1]);
+
+        assert!(test_backend.skip().is_err());
     }
 
     fn assert_vectors(actual_vector: &Vec<PathBuf>, expected_vector: &Vec<PathBuf>) {
