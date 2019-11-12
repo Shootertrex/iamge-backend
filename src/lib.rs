@@ -8,13 +8,13 @@ mod control_flow;
 mod filesystem;
 
 pub struct Backend {
-    files: Vec<PathBuf>,
-    folders: Vec<PathBuf>,
-    pwd: String,
-    current_file_index: usize,
+    pub files: Vec<PathBuf>,
+    pub folders: Vec<PathBuf>,
+    pub pwd: String,
+    pub current_file_index: usize,
     undo_stack: Vec<Box<dyn Controllable>>,
     redo_stack: Vec<Box<dyn Controllable>>,
-    filesystem_helper: Box<dyn FilesystemIO>,
+    pub filesystem_helper: Box<dyn FilesystemIO>,
 }
 
 impl Default for Backend {
