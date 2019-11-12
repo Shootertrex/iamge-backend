@@ -45,12 +45,14 @@ impl Backend {
     }
 
     pub fn load_folders_and_files(&mut self, directory: String) -> Result<(), Error> {
+        let clean_directory = directory.trim();
+
         self.files = self
             .filesystem_helper
-            .load_filesystem_elements(Path::new(&directory), true)?;
+            .load_filesystem_elements(Path::new(&clean_directory), true)?;
         self.folders = self
             .filesystem_helper
-            .load_filesystem_elements(Path::new(&directory), false)?;
+            .load_filesystem_elements(Path::new(&clean_directory), false)?;
         self.pwd = directory;
 
         Ok(())
@@ -59,13 +61,13 @@ impl Backend {
     pub fn load_external_folders(&mut self, directory: String) -> Result<(), Error> {
         self.folders = self
             .filesystem_helper
-            .load_filesystem_elements(Path::new(&directory), false)?;
+            .load_filesystem_elements(Path::new(&directory.trim()), false)?;
 
         Ok(())
     }
 
     pub fn add_folder(&mut self, directory: String) -> Result<(), Error> {
-        let new_folder = self.filesystem_helper.add_folder(&directory)?;
+        let new_folder = self.filesystem_helper.add_folder(&directory.trim())?;
         self.folders.push(new_folder);
 
         Ok(())
@@ -76,7 +78,7 @@ impl Backend {
     }
 
     pub fn delete_file(&mut self, file_path: String) -> Result<(), Error> {
-        match self.filesystem_helper.delete_file(Path::new(&file_path)) {
+        match self.filesystem_helper.delete_file(Path::new(&file_path.trim())) {
             Ok(_) => {
                 self.undo_stack.push(Box::new(Skip::new()));
 
@@ -87,11 +89,14 @@ impl Backend {
     }
 
     pub fn move_file(&mut self, from_file: String, to_file: String) -> Result<(), Error> {
+        let clean_from_file = from_file.trim().to_owned();
+        let clean_to_file = to_file.trim().to_owned();
+
         self.filesystem_helper
-            .move_file(Path::new(&from_file), Path::new(&to_file))?;
+            .move_file(Path::new(&clean_from_file), Path::new(&clean_to_file))?;
 
         self.undo_stack
-            .push(Box::new(Move::new(from_file, to_file)));
+            .push(Box::new(Move::new(clean_from_file, clean_to_file)));
 
         Ok(())
     }
