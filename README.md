@@ -30,3 +30,6 @@
 - ~~perform undo~~
 - ~~perform redo~~
 - how to undo a delete in rust? not possible?
+
+### Other
+- write documentation
