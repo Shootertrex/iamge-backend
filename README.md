@@ -32,4 +32,9 @@
 - how to undo a delete in rust? not possible?
 
 ### Other
+- index out of bounds on moving files when no folders
+- filter out duplicate folders when adding/loading
 - write documentation
+- can't use ~/ in folder names
+- maybe don't want to wipe out folders when loading external
+- allow multiple source folders for files
