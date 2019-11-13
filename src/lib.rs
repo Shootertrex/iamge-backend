@@ -1,7 +1,7 @@
 use crate::control_flow::{Move, Skip};
 use crate::filesystem::{Filesystem, FilesystemIO};
 use control_flow::Controllable;
-use std::io::Error;
+use std::io::{Error, ErrorKind};
 use std::path::{Path, PathBuf};
 
 mod control_flow;
@@ -77,8 +77,8 @@ impl Backend {
         self.folders = Vec::new();
     }
 
-    pub fn delete_file(&mut self, file_path: String) -> Result<(), Error> {
-        match self.filesystem_helper.delete_file(Path::new(&file_path.trim())) {
+    pub fn delete_file(&mut self) -> Result<(), Error> {
+        match self.filesystem_helper.delete_file(self.get_current_file()) {
             Ok(_) => {
                 self.undo_stack.push(Box::new(Skip::new()));
 
@@ -88,17 +88,32 @@ impl Backend {
         }
     }
 
-    pub fn move_file(&mut self, from_file: String, to_file: String) -> Result<(), Error> {
-        let clean_from_file = from_file.trim().to_owned();
-        let clean_to_file = to_file.trim().to_owned();
+    pub fn move_file(&mut self, to_folder: PathBuf) -> Result<(), Error> {
+        if self.files.is_empty() {
+            return Err(Error::from(ErrorKind::NotFound));
+        }
 
-        self.filesystem_helper
-            .move_file(Path::new(&clean_from_file), Path::new(&clean_to_file))?;
+        let from_file = self.get_current_file().clone();
+        let destination = Self::build_destination(to_folder, &from_file)?;
+
+        self.filesystem_helper.move_file(&from_file, &destination)?;
 
         self.undo_stack
-            .push(Box::new(Move::new(clean_from_file, clean_to_file)));
+            .push(Box::new(Move::new(from_file, destination)));
 
         Ok(())
+    }
+
+    fn build_destination(mut to_folder: PathBuf, from_file: &PathBuf) -> Result<PathBuf, Error> {
+        let file_name = match from_file.file_name() {
+            Some(some_file) => some_file,
+            None => {
+                return Err(Error::from(ErrorKind::InvalidData));
+            }
+        };
+        to_folder.push(file_name);
+
+        Ok(to_folder)
     }
 
     pub fn increment(&mut self) -> Result<(), String> {
@@ -229,15 +244,26 @@ mod tests {
     #[test]
     fn ensure_file_is_moved_when_move_file_is_called() {
         let filesystem_mock = FilesystemMock::new();
+        let expected_files = build_files();
         let mut test_backend = Backend::new();
         test_backend.filesystem_helper = Box::new(filesystem_mock);
+        test_backend.files = expected_files.clone();
         assert_eq!(test_backend.undo_stack.len(), 0);
 
         test_backend
-            .move_file("./fromFolder".to_owned(), "./toFolder".to_owned())
+            .move_file(PathBuf::from("./toFolder"))
             .unwrap();
 
         assert_eq!(test_backend.undo_stack.len(), 1);
+    }
+
+    #[test]
+    fn ensure_error_is_thrown_when_no_files_loaded_when_moving() {
+        let mut test_backend = Backend::new();
+
+        assert!(test_backend
+            .move_file(PathBuf::from("./toFolder"))
+            .is_err());
     }
 
     #[test]
@@ -280,9 +306,7 @@ mod tests {
         test_backend.files = expected_files.clone();
         assert_eq!(test_backend.undo_stack.len(), 0);
 
-        test_backend
-            .delete_file("./file1.png".to_owned())
-            .expect("delete failed!");
+        test_backend.delete_file().expect("delete failed!");
 
         let actual_folders = &test_backend.folders;
         let actual_files = &test_backend.files;
@@ -332,7 +356,7 @@ mod tests {
     fn ensure_undo_stack_is_popped_and_redo_stack_is_pushed_when_undoing() {
         let mut test_backend = Backend::new();
         let filesystem_mock = FilesystemMock::new();
-        let mut undo_element = Move::new("a".to_owned(), "b".to_owned());
+        let mut undo_element = Move::new(PathBuf::from("a"), PathBuf::from("b"));
         undo_element.filesystem_helper = Box::new(filesystem_mock);
         test_backend.undo_stack.push(Box::new(undo_element));
 
@@ -356,7 +380,7 @@ mod tests {
     fn ensure_redo_stack_is_popped_and_undo_stack_is_pushed_when_redoing() {
         let mut test_backend = Backend::new();
         let filesystem_mock = FilesystemMock::new();
-        let mut redo_element = Move::new("a".to_owned(), "b".to_owned());
+        let mut redo_element = Move::new(PathBuf::from("a"), PathBuf::from("b"));
         redo_element.filesystem_helper = Box::new(filesystem_mock);
         test_backend.redo_stack.push(Box::new(redo_element));
 
