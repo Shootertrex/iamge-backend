@@ -1,4 +1,4 @@
-# Image backend (name pending)
+# Sorter backend (name pending)
 
 ## Features:
 - Moving and deleting files will require manually calling the method to move forward the pointer
