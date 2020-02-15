@@ -32,7 +32,8 @@
 - how to undo a delete in rust? not possible?
 
 ### Other
-- index out of bounds on moving files when no folders
+- index out of bounds when getting current file when no files loaded (usually on program start up)
+- index out of bounds on moving files when no folders (may not bug with this. still investigate)
 - filter out duplicate folders when adding/loading
 - write documentation
 - can't use ~/ in folder names
