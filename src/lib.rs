@@ -15,6 +15,7 @@ pub struct Backend {
     undo_stack: Vec<Box<dyn Controllable>>,
     redo_stack: Vec<Box<dyn Controllable>>,
     pub filesystem_helper: Box<dyn FilesystemIO>,
+    default_path: PathBuf,
 }
 
 impl Default for Backend {
@@ -33,6 +34,7 @@ impl Backend {
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
             filesystem_helper: Box::new(Filesystem::new()),
+            default_path: PathBuf::new(),
         }
     }
 
@@ -41,6 +43,10 @@ impl Backend {
     }
 
     pub fn get_current_file(&self) -> &PathBuf {
+        if &self.current_file_index < &0 || &self.current_file_index >= &self.file_count() {
+            return &self.default_path;
+        }
+
         &self.files[self.current_file_index]
     }
 
@@ -408,6 +414,14 @@ mod tests {
         assert_eq!(test_backend.redo_stack.len(), 0);
         assert_eq!(test_backend.undo_stack.len(), 0);
         assert_eq!(test_backend.current_file_index, 0);
+    }
+
+    #[test]
+    fn ensure_default_path_is_returned_when_current_file_index_is_out_of_bounds() {
+        let mut test_backend = Backend::new();
+        test_backend.current_file_index = 10;
+
+        assert_eq!(test_backend.get_current_file(), &test_backend.default_path);
     }
 
     fn assert_vectors(actual_vector: &Vec<PathBuf>, expected_vector: &Vec<PathBuf>) {
