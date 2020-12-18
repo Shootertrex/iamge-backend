@@ -104,6 +104,7 @@ impl Backend {
 
         self.filesystem_helper.move_file(&from_file, &destination)?;
 
+        self.increment()?;
         self.undo_stack
             .push(Box::new(Move::new(from_file, destination)));
 
@@ -122,17 +123,23 @@ impl Backend {
         Ok(to_folder)
     }
 
-    pub fn increment(&mut self) -> Result<(), String> {
+    fn increment(&mut self) -> Result<(), Error> {
         Self::is_end_of_files(self.current_file_index, self.file_count())?;
         self.current_file_index += 1;
+
+        Ok(())
+    }
+
+    pub fn skip(&mut self) -> Result<(), Error> {
+        self.increment()?;
         self.undo_stack.push(Box::new(Skip::new()));
 
         Ok(())
     }
 
-    fn is_end_of_files(file_index: usize, file_count: usize) -> Result<(), String> {
+    fn is_end_of_files(file_index: usize, file_count: usize) -> Result<(), Error> {
         if file_index + 1 >= file_count {
-            return Err("Reached end of files!".to_owned());
+            return Err(Error::from(ErrorKind::UnexpectedEof));
         }
         Ok(())
     }
@@ -263,6 +270,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(test_backend.undo_stack.len(), 1);
+        assert_eq!(test_backend.current_file_index, 1);
     }
 
     #[test]
@@ -335,7 +343,7 @@ mod tests {
         );
         assert_eq!(test_backend.undo_stack.len(), 0);
 
-        test_backend.increment().expect("Skipping failed");
+        test_backend.skip().expect("Skipping failed");
 
         assert_eq!(test_backend.current_file_index, expected_index);
         assert_eq!(
@@ -343,6 +351,28 @@ mod tests {
             &expected_files[expected_index]
         );
         assert_eq!(test_backend.undo_stack.len(), 1);
+    }
+
+    #[test]
+    fn ensure_pointer_is_moved_forward_and_unchanged_undo_stack_when_incrementing() {
+        let expected_files = build_files();
+        let mut test_backend = Backend::new();
+        test_backend.files = expected_files.clone();
+        let expected_index = 1;
+        assert_eq!(
+            test_backend.get_current_file(),
+            &expected_files[expected_index - 1]
+        );
+        assert_eq!(test_backend.undo_stack.len(), 0);
+
+        test_backend.increment().expect("Skipping failed");
+
+        assert_eq!(test_backend.current_file_index, expected_index);
+        assert_eq!(
+            test_backend.get_current_file(),
+            &expected_files[expected_index]
+        );
+        assert_eq!(test_backend.undo_stack.len(), 0);
     }
 
     #[test]
