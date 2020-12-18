@@ -1,8 +1,6 @@
 # Sorter backend (name pending)
 
 ## Features:
-- Moving and deleting files will require manually calling the method to move forward the pointer
-    - This reduces the complexity of each method to only return 1 type of error
 
 ### Folder manipulation:
 - ~~load folders and files~~ (multithreaded)
@@ -30,12 +28,16 @@
 - ~~perform undo~~
 - ~~perform redo~~
 - how to undo a delete in rust? not possible?
+    - move file to trash bin instead of full delete?
 
-### Other
-- index out of bounds when getting current file when no files loaded (usually on program start up)
-- index out of bounds on moving files when no folders (may not bug with this. still investigate)
+### Enhancements
 - filter out duplicate folders when adding/loading
 - write documentation
-- can't use ~/ in folder names
 - maybe don't want to wipe out folders when loading external
 - allow multiple source folders for files
+- add coverage to control_flow undo/redo
+
+### Bugs
+- ~~index out of bounds when getting current file when no files loaded (usually on program start up)~~
+- index out of bounds on moving files when no folders (may not bug with this. still investigate)
+- can't use ~/ in folder names
