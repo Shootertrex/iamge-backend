@@ -21,7 +21,7 @@ impl Move {
 impl Controllable for Move {
     fn undo(&self) -> Result<(), Error> {
         self.filesystem_helper
-            .move_file(&self.current_file_location, &self.previous_file_location)?;
+            .move_file(&self.previous_file_location, &self.current_file_location)?;
 
         Ok(())
     }
@@ -42,18 +42,18 @@ pub struct Skip {
 
 impl Skip {
     pub fn new() -> Skip {
-        Skip {}
+        Skip { }
     }
 }
 
 impl Controllable for Skip {
     fn undo(&self) -> Result<(), Error> {
-        // do nothing except decrement pointer
+        // do nothing except decrement pointer on lib
         Ok(())
     }
 
     fn redo(&self) -> Result<(), Error> {
-        // do nothing except increment pointer
+        // do nothing except increment pointer on lib
         Ok(())
     }
 }
