@@ -60,6 +60,9 @@ impl Backend {
             .filesystem_helper
             .load_filesystem_elements(Path::new(&clean_directory), false)?;
         self.pwd = directory;
+        self.current_file_index = 0;
+        self.undo_stack = Vec::new();
+        self.redo_stack = Vec::new();
 
         Ok(())
     }
