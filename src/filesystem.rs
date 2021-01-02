@@ -50,6 +50,9 @@ impl FilesystemIO for Filesystem {
     }
 
     fn move_file(&self, from_file: &Path, to_file: &Path) -> Result<(), Error> {
+        if to_file.exists() {
+            return Err(Error::from(ErrorKind::AlreadyExists));
+        }
         fs::rename(from_file, to_file)?;
         Ok(())
     }
@@ -68,7 +71,7 @@ impl FilesystemIO for Filesystem {
 #[cfg(test)]
 mod tests {
     use crate::filesystem::{Filesystem, FilesystemIO};
-    use std::fs;
+    use std::{fs, io::Error};
     use std::fs::File;
     use std::io::ErrorKind;
     use std::path::{Path, PathBuf};
@@ -148,6 +151,22 @@ mod tests {
         assert!(Filesystem::new()
             .delete_file(&dir.path().join(file1))
             .is_err());
+    }
+
+    #[test]
+    fn ensure_error_thrown_when_file_already_exists() {
+        let from_dir = TempDir::new("unit_test").unwrap();
+        let to_dir = TempDir::new("unit_test").unwrap();
+        let file1 = "file1.txt";
+        let file2 = "file1.txt";
+        File::create(from_dir.path().join(file1)).unwrap();
+        File::create(to_dir.path().join(file2)).unwrap();
+
+        let actual = Filesystem::new()
+            .move_file(&from_dir.path().join(file1), &to_dir.path().join(file1)).unwrap_err();
+        let expected_error = Error::from(ErrorKind::AlreadyExists);
+
+        assert_eq!(expected_error.kind(), actual.kind());
     }
 
     #[test]
