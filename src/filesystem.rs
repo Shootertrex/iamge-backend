@@ -41,6 +41,10 @@ impl FilesystemIO for Filesystem {
             files.push(path);
         }
 
+        //this is temporary. should extract files and folder loading separately
+        //maybe return a tuple of (files,folders)?
+        files.sort();
+
         Ok(files)
     }
 
