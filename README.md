@@ -41,3 +41,5 @@
 - ~~index out of bounds when getting current file when no files loaded (usually on program start up)~~
 - index out of bounds on moving files when no folders (may not bug with this. still investigate)
 - can't use ~/ in folder names
+- undoing file move when end of files puts the previewed file as the second to last instead of the last
+    - might also lead to crash
