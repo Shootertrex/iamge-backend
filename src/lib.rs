@@ -1,6 +1,5 @@
-use crate::control_flow::{Move, Skip};
+use crate::control_flow::{ Controllable, Move, Skip };
 use crate::filesystem::{Filesystem, FilesystemIO};
-use control_flow::Controllable;
 use std::io::{Error, ErrorKind};
 use std::path::{Path, PathBuf};
 
@@ -43,7 +42,7 @@ impl Backend {
     }
 
     pub fn get_current_file(&self) -> &PathBuf {
-        if &self.current_file_index < &0 || &self.current_file_index >= &self.file_count() {
+        if self.current_file_index >= self.file_count() {
             return &self.default_path;
         }
 
@@ -76,7 +75,7 @@ impl Backend {
     }
 
     pub fn add_folder(&mut self, directory: String) -> Result<(), Error> {
-        let new_folder = self.filesystem_helper.add_folder(&directory.trim())?;
+        let new_folder = self.filesystem_helper.add_folder(directory.trim())?;
         self.folders.push(new_folder);
 
         Ok(())
@@ -114,7 +113,7 @@ impl Backend {
         Ok(())
     }
 
-    fn build_destination(mut to_folder: PathBuf, from_file: &PathBuf) -> Result<PathBuf, Error> {
+    fn build_destination(mut to_folder: PathBuf, from_file: &Path) -> Result<PathBuf, Error> {
         let file_name = match from_file.file_name() {
             Some(some_file) => some_file,
             None => {
