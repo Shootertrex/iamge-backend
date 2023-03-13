@@ -27,10 +27,8 @@ impl Controllable for Move {
     }
 
     fn redo(&self) -> Result<(), Error> {
-        self.filesystem_helper.move_file(
-            &self.current_file_location,
-            &self.previous_file_location,
-        )?;
+        self.filesystem_helper
+            .move_file(&self.current_file_location, &self.previous_file_location)?;
 
         Ok(())
     }
@@ -42,7 +40,7 @@ pub struct Skip {
 
 impl Skip {
     pub fn new() -> Skip {
-        Skip { }
+        Skip {}
     }
 }
 

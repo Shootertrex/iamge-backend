@@ -1,4 +1,4 @@
-use crate::control_flow::{ Controllable, Move, Skip };
+use crate::control_flow::{Controllable, Move, Skip};
 use crate::filesystem::{Filesystem, FilesystemIO};
 use std::io::{Error, ErrorKind};
 use std::path::{Path, PathBuf};
@@ -15,7 +15,7 @@ pub struct Backend {
     redo_stack: Vec<Box<dyn Controllable>>,
     pub filesystem_helper: Box<dyn FilesystemIO>,
     default_path: PathBuf,
-    end_of_files: bool
+    end_of_files: bool,
 }
 
 impl Default for Backend {
@@ -54,7 +54,7 @@ impl Backend {
     pub fn load_folders_and_files(&mut self, directory: String) -> Result<(), Error> {
         let clean_directory = directory.trim();
 
-        (self.folders, self.files) =self
+        (self.folders, self.files) = self
             .filesystem_helper
             .load_filesystem_elements(Path::new(&clean_directory))?;
         self.pwd = directory;
@@ -69,7 +69,8 @@ impl Backend {
         // TODO: add function to just get folders
         self.folders = self
             .filesystem_helper
-            .load_filesystem_elements(Path::new(&directory.trim()))?.0;
+            .load_filesystem_elements(Path::new(&directory.trim()))?
+            .0;
 
         Ok(())
     }
@@ -142,11 +143,13 @@ impl Backend {
     }
 
     fn is_end_of_files(&mut self, file_index: usize, file_count: usize) -> Result<(), Error> {
-        if file_index + 1 >= file_count {
-            self.end_of_files = true;
-            return Err(Error::from(ErrorKind::UnexpectedEof));
+        match file_index + 1 >= file_count {
+            true => {
+                self.end_of_files = true;
+                Err(Error::from(ErrorKind::UnexpectedEof))
+            }
+            false => Ok(()),
         }
-        Ok(())
     }
 
     pub fn undo(&mut self) -> Result<(), Error> {
@@ -204,7 +207,7 @@ mod tests {
     impl FilesystemIO for FilesystemMock {
         fn load_filesystem_elements(
             &self,
-            _directory: &Path
+            _directory: &Path,
         ) -> Result<(Vec<PathBuf>, Vec<PathBuf>), Error> {
             Ok((self.folders.clone(), self.files.clone()))
         }
@@ -215,10 +218,9 @@ mod tests {
             Ok(())
         }
         fn add_folder(&self, _folder: &str) -> Result<PathBuf, Error> {
-            if self.folders.len() == 1 {
-                Ok(self.folders[0].clone())
-            } else {
-                Err(Error::from(ErrorKind::NotFound))
+            match self.folders.len() == 1 {
+                true => Ok(self.folders[0].clone()),
+                false => Err(Error::from(ErrorKind::NotFound)),
             }
         }
     }
@@ -284,9 +286,7 @@ mod tests {
         test_backend.files = expected_files.clone();
         assert_eq!(test_backend.undo_stack.len(), 0);
 
-        test_backend
-            .move_file(PathBuf::from("./toFolder"))
-            .unwrap();
+        test_backend.move_file(PathBuf::from("./toFolder")).unwrap();
 
         assert_eq!(test_backend.undo_stack.len(), 1);
         assert_eq!(test_backend.current_file_index, 1);
@@ -296,9 +296,7 @@ mod tests {
     fn ensure_error_is_thrown_when_no_files_loaded_when_moving() {
         let mut test_backend = Backend::new();
 
-        assert!(test_backend
-            .move_file(PathBuf::from("./toFolder"))
-            .is_err());
+        assert!(test_backend.move_file(PathBuf::from("./toFolder")).is_err());
     }
 
     #[test]

@@ -8,7 +8,7 @@ pub struct Filesystem {}
 pub trait FilesystemIO {
     fn load_filesystem_elements(
         &self,
-        directory: &Path
+        directory: &Path,
     ) -> Result<(Vec<PathBuf>, Vec<PathBuf>), Error>;
     fn delete_file(&self, file: &Path) -> Result<(), Error>;
     fn move_file(&self, from_file: &Path, to_file: &Path) -> Result<(), Error>;
@@ -24,7 +24,7 @@ impl Filesystem {
 impl FilesystemIO for Filesystem {
     fn load_filesystem_elements(
         &self,
-        directory: &Path
+        directory: &Path,
     ) -> Result<(Vec<PathBuf>, Vec<PathBuf>), Error> {
         let mut files: Vec<PathBuf> = Vec::new();
         let mut folders: Vec<PathBuf> = Vec::new();
@@ -33,10 +33,9 @@ impl FilesystemIO for Filesystem {
         for maybe_dir_entry in paths {
             let path = (maybe_dir_entry)?.path();
 
-            if path.is_dir() {
-                folders.push(path);
-            } else {
-                files.push(path);
+            match path.is_dir() {
+                true => folders.push(path),
+                false => files.push(path),
             }
         }
 
@@ -73,10 +72,10 @@ impl FilesystemIO for Filesystem {
 #[cfg(test)]
 mod tests {
     use crate::filesystem::{Filesystem, FilesystemIO};
-    use std::{fs, io::Error};
     use std::fs::File;
     use std::io::ErrorKind;
     use std::path::{Path, PathBuf};
+    use std::{fs, io::Error};
     use tempdir::TempDir;
 
     fn assert_filesystem_elements(
@@ -95,14 +94,16 @@ mod tests {
 
     #[test]
     fn ensure_files_and_files_are_loaded() {
-        let expected_files = (vec![
-            PathBuf::from(r"./images/testFolder"),
-            PathBuf::from(r"./images/testFolder2"),
-        ],
-        vec![
-            PathBuf::from(r"./images/file1.jpg"),
-            PathBuf::from(r"./images/file2.jpg"),
-        ]);
+        let expected_files = (
+            vec![
+                PathBuf::from(r"./images/testFolder"),
+                PathBuf::from(r"./images/testFolder2"),
+            ],
+            vec![
+                PathBuf::from(r"./images/file1.jpg"),
+                PathBuf::from(r"./images/file2.jpg"),
+            ],
+        );
 
         let actual_files = Filesystem::new()
             .load_filesystem_elements(Path::new("./images"))
@@ -159,7 +160,8 @@ mod tests {
         File::create(to_dir.path().join(file2)).unwrap();
 
         let actual = Filesystem::new()
-            .move_file(&from_dir.path().join(file1), &to_dir.path().join(file1)).unwrap_err();
+            .move_file(&from_dir.path().join(file1), &to_dir.path().join(file1))
+            .unwrap_err();
         let expected_error = Error::from(ErrorKind::AlreadyExists);
 
         assert_eq!(expected_error.kind(), actual.kind());
@@ -211,7 +213,7 @@ mod tests {
             vec![Filesystem::new()
                 .add_folder(&"./images/testFolder".to_owned())
                 .expect("Found empty list!")],
-            vec![]
+            vec![],
         );
 
         assert_filesystem_elements(actual_folders, expected_folders);
