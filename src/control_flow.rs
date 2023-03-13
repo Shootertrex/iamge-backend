@@ -1,11 +1,11 @@
 use crate::filesystem::{Filesystem, FilesystemIO};
 use std::io::Error;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub struct Move {
     pub current_file_location: PathBuf,
     pub previous_file_location: PathBuf,
-    pub filesystem_helper: Box<dyn FilesystemIO>,
+    pub filesystem_helper: Box<dyn FilesystemIO>, // TODO: figure out how to take in ref to parent's helper
 }
 
 impl Move {
@@ -28,8 +28,8 @@ impl Controllable for Move {
 
     fn redo(&self) -> Result<(), Error> {
         self.filesystem_helper.move_file(
-            Path::new(&self.previous_file_location),
-            Path::new(&self.current_file_location),
+            &self.current_file_location,
+            &self.previous_file_location,
         )?;
 
         Ok(())

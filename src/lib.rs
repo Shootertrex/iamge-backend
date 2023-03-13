@@ -15,6 +15,7 @@ pub struct Backend {
     redo_stack: Vec<Box<dyn Controllable>>,
     pub filesystem_helper: Box<dyn FilesystemIO>,
     default_path: PathBuf,
+    end_of_files: bool
 }
 
 impl Default for Backend {
@@ -34,6 +35,7 @@ impl Backend {
             redo_stack: Vec::new(),
             filesystem_helper: Box::new(Filesystem::new()),
             default_path: PathBuf::new(),
+            end_of_files: false,
         }
     }
 
@@ -52,12 +54,9 @@ impl Backend {
     pub fn load_folders_and_files(&mut self, directory: String) -> Result<(), Error> {
         let clean_directory = directory.trim();
 
-        self.files = self
+        (self.folders, self.files) =self
             .filesystem_helper
-            .load_filesystem_elements(Path::new(&clean_directory), true)?;
-        self.folders = self
-            .filesystem_helper
-            .load_filesystem_elements(Path::new(&clean_directory), false)?;
+            .load_filesystem_elements(Path::new(&clean_directory))?;
         self.pwd = directory;
         self.current_file_index = 0;
         self.undo_stack = Vec::new();
@@ -67,9 +66,10 @@ impl Backend {
     }
 
     pub fn load_external_folders(&mut self, directory: String) -> Result<(), Error> {
+        // TODO: add function to just get folders
         self.folders = self
             .filesystem_helper
-            .load_filesystem_elements(Path::new(&directory.trim()), false)?;
+            .load_filesystem_elements(Path::new(&directory.trim()))?.0;
 
         Ok(())
     }
@@ -85,6 +85,7 @@ impl Backend {
         self.folders = Vec::new();
     }
 
+    // TODO: shouldn't this increment like move/skip?
     pub fn delete_file(&mut self) -> Result<(), Error> {
         match self.filesystem_helper.delete_file(self.get_current_file()) {
             Ok(_) => {
@@ -106,9 +107,10 @@ impl Backend {
 
         self.filesystem_helper.move_file(&from_file, &destination)?;
 
-        self.increment()?;
+        println!("incrementing {}", self.current_file_index);
         self.undo_stack
             .push(Box::new(Move::new(from_file, destination)));
+        self.increment()?;
 
         Ok(())
     }
@@ -126,7 +128,7 @@ impl Backend {
     }
 
     fn increment(&mut self) -> Result<(), Error> {
-        Self::is_end_of_files(self.current_file_index, self.file_count())?;
+        self.is_end_of_files(self.current_file_index, self.file_count())?;
         self.current_file_index += 1;
 
         Ok(())
@@ -139,8 +141,9 @@ impl Backend {
         Ok(())
     }
 
-    fn is_end_of_files(file_index: usize, file_count: usize) -> Result<(), Error> {
+    fn is_end_of_files(&mut self, file_index: usize, file_count: usize) -> Result<(), Error> {
         if file_index + 1 >= file_count {
+            self.end_of_files = true;
             return Err(Error::from(ErrorKind::UnexpectedEof));
         }
         Ok(())
@@ -151,7 +154,12 @@ impl Backend {
             Some(item) => {
                 let result = item.undo();
                 self.redo_stack.push(item);
-                self.current_file_index -= 1;
+                if self.end_of_files {
+                    self.end_of_files = false;
+                } else {
+                    self.current_file_index -= 1;
+                }
+
                 result
             }
             None => Ok(()),
@@ -163,7 +171,7 @@ impl Backend {
             Some(item) => {
                 let result = item.redo();
                 self.undo_stack.push(item);
-                self.current_file_index += 1;
+                self.increment()?;
                 result
             }
             None => Ok(()),
@@ -196,16 +204,9 @@ mod tests {
     impl FilesystemIO for FilesystemMock {
         fn load_filesystem_elements(
             &self,
-            _directory: &Path,
-            is_file: bool,
-        ) -> Result<Vec<PathBuf>, Error> {
-            if is_file {
-                Ok(self.files.clone())
-            } else if !is_file {
-                Ok(self.folders.clone())
-            } else {
-                Err(Error::from(ErrorKind::NotFound))
-            }
+            _directory: &Path
+        ) -> Result<(Vec<PathBuf>, Vec<PathBuf>), Error> {
+            Ok((self.folders.clone(), self.files.clone()))
         }
         fn delete_file(&self, _file: &Path) -> Result<(), Error> {
             Ok(())
@@ -220,6 +221,22 @@ mod tests {
                 Err(Error::from(ErrorKind::NotFound))
             }
         }
+    }
+
+    fn build_folders() -> Vec<PathBuf> {
+        vec![
+            PathBuf::from("./folder1"),
+            PathBuf::from("./folder2"),
+            PathBuf::from("./folder3"),
+        ]
+    }
+
+    fn build_files() -> Vec<PathBuf> {
+        vec![
+            PathBuf::from("./file1.png"),
+            PathBuf::from("./file2.png"),
+            PathBuf::from("./file3.png"),
+        ]
     }
 
     #[test]
@@ -421,13 +438,33 @@ mod tests {
     }
 
     #[test]
-    fn ensure_redo_stack_is_popped_and_undo_stack_is_pushed_when_redoing() {
-        let mut test_backend = Backend::new();
+    fn ensure_final_image_is_undone_when_end_of_files_hit_and_undo() {
         let filesystem_mock = FilesystemMock::new();
+        let expected_files = build_files();
+        let mut test_backend = Backend::new();
+        test_backend.filesystem_helper = Box::new(filesystem_mock);
+        test_backend.files = expected_files.clone();
+        assert_eq!(test_backend.undo_stack.len(), 0);
+        dbg!(&test_backend.files);
+        test_backend.move_file(PathBuf::from("./toFolder")).unwrap();
+        test_backend.move_file(PathBuf::from("./toFolder")).unwrap();
+        let _ = test_backend.move_file(PathBuf::from("./toFolder")); // ignore result since EoF
+
+        let _ = test_backend.undo(); // ignore result since it tries on real filesystem
+
+        assert_eq!(test_backend.current_file_index, 2);
+    }
+
+    #[test]
+    fn ensure_redo_stack_is_popped_and_undo_stack_is_pushed_when_redoing() {
+        let filesystem_mock = FilesystemMock::new();
+        let expected_files = build_files();
         let mut redo_element = Move::new(PathBuf::from("a"), PathBuf::from("b"));
         redo_element.filesystem_helper = Box::new(filesystem_mock);
+        let mut test_backend = Backend::new();
         test_backend.redo_stack.push(Box::new(redo_element));
         test_backend.current_file_index = 0;
+        test_backend.files = expected_files;
 
         test_backend.redo().expect("redo failed");
 
@@ -461,21 +498,5 @@ mod tests {
         for expected in expected_vector {
             assert!(actual_vector.contains(expected));
         }
-    }
-
-    fn build_folders() -> Vec<PathBuf> {
-        vec![
-            PathBuf::from("./folder1"),
-            PathBuf::from("./folder2"),
-            PathBuf::from("./folder3"),
-        ]
-    }
-
-    fn build_files() -> Vec<PathBuf> {
-        vec![
-            PathBuf::from("./file1.png"),
-            PathBuf::from("./file2.png"),
-            PathBuf::from("./file3.png"),
-        ]
     }
 }
