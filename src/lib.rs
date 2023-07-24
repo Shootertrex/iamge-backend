@@ -65,7 +65,10 @@ impl Backend {
         self.files.len()
     }
 
-    /// Returns a &[PathBuf] to the current file.
+    /// Returns an [Option] of &[PathBuf] to the current file.
+    ///
+    /// A current file may not exist in certain cases, such as no files have been loaded or if the
+    /// index reaches the end of the file list.
     // TODO: should this return an Option instead of using a default path?
     pub fn get_current_file(&self) -> Option<&PathBuf> {
         if self.current_file_index >= self.file_count() {
