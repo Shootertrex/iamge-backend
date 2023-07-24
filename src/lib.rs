@@ -37,7 +37,6 @@ pub struct Backend {
     redo_stack: Vec<Box<dyn Controllable>>,
     #[doc(hidden)]
     pub filesystem_helper: Box<dyn FilesystemIO>,
-    default_path: PathBuf,
     end_of_files: bool,
 }
 
@@ -57,7 +56,6 @@ impl Backend {
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
             filesystem_helper: Box::new(Filesystem::new()),
-            default_path: PathBuf::new(),
             end_of_files: false,
         }
     }
@@ -69,12 +67,12 @@ impl Backend {
 
     /// Returns a &[PathBuf] to the current file.
     // TODO: should this return an Option instead of using a default path?
-    pub fn get_current_file(&self) -> &PathBuf {
+    pub fn get_current_file(&self) -> Option<&PathBuf> {
         if self.current_file_index >= self.file_count() {
-            return &self.default_path;
+            return None;
         }
 
-        &self.files[self.current_file_index]
+        Some(&self.files[self.current_file_index])
     }
 
     /// Loads all files and directories in the specified path.
@@ -147,14 +145,16 @@ impl Backend {
     /// returned.
     // TODO: shouldn't this increment like move/skip?
     pub fn delete_file(&mut self) -> Result<(), Error> {
-        match self.filesystem_helper.delete_file(self.get_current_file()) {
-            Ok(_) => {
-                self.undo_stack.push(Box::new(Skip::new()));
-
-                Ok(())
+        if let Some(file) = self.get_current_file() {
+            match self.filesystem_helper.delete_file(file) {
+                Ok(_) => {
+                    self.undo_stack.push(Box::new(Skip::new()));
+                }
+                Err(error) => { return Err(error) },
             }
-            Err(error) => Err(error),
         }
+
+        Ok(())
     }
 
     /// Moves the current file to a specified path.
@@ -173,15 +173,16 @@ impl Backend {
             return Err(Error::from(ErrorKind::NotFound));
         }
 
-        let from_file = self.get_current_file().clone();
-        let destination = Self::build_destination(to_folder, &from_file)?;
+        if let Some(from_file) = self.get_current_file() {
+            let destination = Self::build_destination(to_folder, from_file)?;
 
-        self.filesystem_helper.move_file(&from_file, &destination)?;
+            self.filesystem_helper.move_file(from_file, &destination)?;
 
-        println!("incrementing {}", self.current_file_index);
-        self.undo_stack
-            .push(Box::new(Move::new(from_file, destination)));
-        self.increment()?;
+            println!("incrementing {}", self.current_file_index);
+            self.undo_stack
+                .push(Box::new(Move::new(from_file.clone(), destination)));
+            self.increment()?;
+        }
 
         Ok(())
     }
@@ -446,7 +447,7 @@ mod tests {
         test_backend.files = expected_files.clone();
         let expected_index = 1;
         assert_eq!(
-            test_backend.get_current_file(),
+            test_backend.get_current_file().unwrap(),
             &expected_files[expected_index - 1]
         );
         assert_eq!(test_backend.undo_stack.len(), 0);
@@ -455,7 +456,7 @@ mod tests {
 
         assert_eq!(test_backend.current_file_index, expected_index);
         assert_eq!(
-            test_backend.get_current_file(),
+            test_backend.get_current_file().unwrap(),
             &expected_files[expected_index]
         );
         assert_eq!(test_backend.undo_stack.len(), 1);
@@ -468,7 +469,7 @@ mod tests {
         test_backend.files = expected_files.clone();
         let expected_index = 1;
         assert_eq!(
-            test_backend.get_current_file(),
+            test_backend.get_current_file().unwrap(),
             &expected_files[expected_index - 1]
         );
         assert_eq!(test_backend.undo_stack.len(), 0);
@@ -477,7 +478,7 @@ mod tests {
 
         assert_eq!(test_backend.current_file_index, expected_index);
         assert_eq!(
-            test_backend.get_current_file(),
+            test_backend.get_current_file().unwrap(),
             &expected_files[expected_index]
         );
         assert_eq!(test_backend.undo_stack.len(), 0);
@@ -491,7 +492,7 @@ mod tests {
         test_backend.current_file_index = 2;
         let expected_index = 3;
         assert_eq!(
-            test_backend.get_current_file(),
+            test_backend.get_current_file().unwrap(),
             &expected_files[expected_index - 1]
         );
 
@@ -575,11 +576,11 @@ mod tests {
     }
 
     #[test]
-    fn ensure_default_path_is_returned_when_current_file_index_is_out_of_bounds() {
+    fn ensure_none_is_returned_when_current_file_index_is_out_of_bounds() {
         let mut test_backend = Backend::new();
         test_backend.current_file_index = 10;
 
-        assert_eq!(test_backend.get_current_file(), &test_backend.default_path);
+        assert_eq!(test_backend.get_current_file().is_none(), true);
     }
 
     fn assert_vectors(actual_vector: &Vec<PathBuf>, expected_vector: &Vec<PathBuf>) {
