@@ -1,3 +1,21 @@
+//! Provides a backend for different operations to make sorting files into various folders
+//! easier. It is expected to be used with some kind of frontend.
+//!
+//! [Backend] allows for several different actions for loading files/folders and moving loaded
+//! files into those folders. These actions include:
+//! - loading all folders and files from a single directory
+//! - loading just folders from a directory
+//! - adding a single folder by its path
+//! - moving a file
+//! - deleting a file
+//! - skipping a file
+//!
+//! All operations[^note] that deal with files can be undone and redone. When these
+//! actions are performed, their respective action is added to an undo stack or a redo stack in
+//! case the user wishes to playback previous actions.
+//!
+//! [^note]: Deletions are currently not capable of being undone.
+
 use crate::control_flow::{Controllable, Move, Skip};
 use crate::filesystem::{Filesystem, FilesystemIO};
 use std::io::{Error, ErrorKind};
@@ -7,12 +25,17 @@ mod control_flow;
 mod filesystem;
 
 pub struct Backend {
+    /// Collection of all files loaded to be sorted.
     pub files: Vec<PathBuf>,
+    /// Collection of all folders loaded that files can be sorted into.
     pub folders: Vec<PathBuf>,
+    /// The current working directory.
     pub pwd: String,
+    /// The index to the current file in the [files vector](Backend::files).
     pub current_file_index: usize,
     undo_stack: Vec<Box<dyn Controllable>>,
     redo_stack: Vec<Box<dyn Controllable>>,
+    #[doc(hidden)]
     pub filesystem_helper: Box<dyn FilesystemIO>,
     default_path: PathBuf,
     end_of_files: bool,
@@ -39,10 +62,13 @@ impl Backend {
         }
     }
 
+    /// Returns the number of files to be sorted.
     pub fn file_count(&self) -> usize {
         self.files.len()
     }
 
+    /// Returns a &[PathBuf] to the current file.
+    // TODO: should this return an Option instead of using a default path?
     pub fn get_current_file(&self) -> &PathBuf {
         if self.current_file_index >= self.file_count() {
             return &self.default_path;
@@ -51,6 +77,16 @@ impl Backend {
         &self.files[self.current_file_index]
     }
 
+    /// Loads all files and directories in the specified path.
+    ///
+    /// Files and folders are loaded into their own vectors and kept in the object's state.
+    /// Any files and folders that were previously loaded are cleared and replaced with these new
+    /// ones. All other state is cleared as well.
+    ///
+    /// # Errors
+    ///
+    /// If there are any I/O errors reading from the specified directory, an error variant will be
+    /// returned.
     pub fn load_folders_and_files(&mut self, directory: String) -> Result<(), Error> {
         let clean_directory = directory.trim();
 
@@ -65,6 +101,16 @@ impl Backend {
         Ok(())
     }
 
+    /// Loads directories in the specified path.
+    ///
+    /// Directories from this path are set as the available folders to sort into. Files are not
+    /// loaded nor cleared. This may be useful in cases where files from one directory should be
+    /// sorted elsewhere on the filesystem and not necessarily into sibling folders.
+    ///
+    /// # Errors
+    ///
+    /// If there are any I/O errors reading from the specified directory, an error variant will be
+    /// returned.
     pub fn load_external_folders(&mut self, directory: String) -> Result<(), Error> {
         // TODO: add function to just get folders
         self.folders = self
@@ -75,6 +121,12 @@ impl Backend {
         Ok(())
     }
 
+    /// Adds a specified folder to the list of folders where files can be sorted into.
+    ///
+    /// # Errors
+    ///
+    /// If there are any I/O errors reading the folder path, an error variant will be
+    /// returned.
     pub fn add_folder(&mut self, directory: String) -> Result<(), Error> {
         let new_folder = self.filesystem_helper.add_folder(directory.trim())?;
         self.folders.push(new_folder);
@@ -82,10 +134,17 @@ impl Backend {
         Ok(())
     }
 
+    /// Clears the currently loaded folders.
     pub fn clear_folders(&mut self) {
         self.folders = Vec::new();
     }
 
+    /// Deletes the current file.
+    ///
+    /// # Errors
+    ///
+    /// If there are any I/O errors deleting from the specified file, an error variant will be
+    /// returned.
     // TODO: shouldn't this increment like move/skip?
     pub fn delete_file(&mut self) -> Result<(), Error> {
         match self.filesystem_helper.delete_file(self.get_current_file()) {
@@ -98,6 +157,17 @@ impl Backend {
         }
     }
 
+    /// Moves the current file to a specified path.
+    ///
+    /// A `control_flow` action that moves the current file to the specified path. It should be
+    /// noted that this method takes a [PathBuf] instead of a [String] like the loading methods.
+    /// This is because it is expected that the `to_folder` comes from the selected folder's path,
+    /// which is already a [PathBuf].
+    ///
+    /// # Errors
+    ///
+    /// If there are any I/O errors moving the file, an error variant will be
+    /// returned.
     pub fn move_file(&mut self, to_folder: PathBuf) -> Result<(), Error> {
         if self.files.is_empty() {
             return Err(Error::from(ErrorKind::NotFound));
@@ -135,6 +205,9 @@ impl Backend {
         Ok(())
     }
 
+    /// Skips the current file.
+    ///
+    /// A `control_flow` action that increments the index that points to the current file forward.
     pub fn skip(&mut self) -> Result<(), Error> {
         self.increment()?;
         self.undo_stack.push(Box::new(Skip::new()));
@@ -152,6 +225,14 @@ impl Backend {
         }
     }
 
+    /// Undoes the previous action.
+    ///
+    /// Undoes the previous `control_flow` action and pushes a redo action onto the `redo_stack`.
+    ///
+    /// # Errors
+    ///
+    /// If there are any I/O errors while undoing, an error variant will be
+    /// returned.
     pub fn undo(&mut self) -> Result<(), Error> {
         match self.undo_stack.pop() {
             Some(item) => {
@@ -169,6 +250,16 @@ impl Backend {
         }
     }
 
+    /// Redoes the action moves recently undone.
+    ///
+    /// Redoes the last `control_flow` action on the `redo_stack` and pushes an undo action
+    /// onto the `undo_stack`. The `redo_stack` gets cleared when any action that isn't a
+    /// redo or an undo is performed.
+    ///
+    /// # Errors
+    ///
+    /// If there are any I/O errors redoing, an error variant will be
+    /// returned.
     pub fn redo(&mut self) -> Result<(), Error> {
         match self.redo_stack.pop() {
             Some(item) => {
@@ -498,3 +589,4 @@ mod tests {
         }
     }
 }
+
