@@ -30,12 +30,12 @@ impl FilesystemIO for Filesystem {
         let mut folders: Vec<PathBuf> = Vec::new();
         let paths = fs::read_dir(directory)?;
 
-        for maybe_dir_entry in paths {
-            let path = (maybe_dir_entry)?.path();
-
-            match path.is_dir() {
-                true => folders.push(path),
-                false => files.push(path),
+        for dir_entry in paths.flatten() {
+            if let Ok(file_type) = dir_entry.file_type() {
+                match file_type.is_file() {
+                    true => files.push(dir_entry.path()),
+                    false => folders.push(dir_entry.path())
+                }
             }
         }
 
@@ -60,12 +60,10 @@ impl FilesystemIO for Filesystem {
 
     fn add_folder(&self, folder: &str) -> Result<PathBuf, Error> {
         let new_folder = PathBuf::from(folder);
-
-        if !new_folder.exists() {
-            return Err(Error::from(ErrorKind::NotFound));
+        match new_folder.exists() {
+            true => Ok(new_folder),
+            false => Err(Error::from(ErrorKind::NotFound)),
         }
-
-        Ok(new_folder)
     }
 }
 
