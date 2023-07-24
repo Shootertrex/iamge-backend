@@ -251,7 +251,7 @@ impl Backend {
         }
     }
 
-    /// Redoes the action moves recently undone.
+    /// Redoes the action most recently undone.
     ///
     /// Redoes the last `control_flow` action on the `redo_stack` and pushes an undo action
     /// onto the `undo_stack`. The `redo_stack` gets cleared when any action that isn't a
